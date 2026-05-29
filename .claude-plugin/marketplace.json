@@ -1,0 +1,37 @@
+{
+  "name": "redreplier",
+  "owner": {
+    "name": "RedReplier",
+    "email": "contact@redreplier.com"
+  },
+  "metadata": {
+    "description": "Give your AI agent Reddit & Hacker News monitoring — track keyword mentions of your product, triage AI-scored leads, and manage alerts",
+    "version": "1.0.0"
+  },
+  "plugins": [
+    {
+      "name": "redreplier",
+      "source": "./",
+      "description": "Monitor Reddit & Hacker News for keyword mentions, manage websites/keywords, triage AI-scored lead mentions, and configure alerts via the RedReplier API",
+      "version": "1.0.0",
+      "author": {
+        "name": "RedReplier"
+      },
+      "homepage": "https://redreplier.com",
+      "repository": "https://github.com/redreplier/agent",
+      "license": "MIT",
+      "keywords": [
+        "reddit",
+        "hacker-news",
+        "monitoring",
+        "social-listening",
+        "mcp",
+        "leads",
+        "keywords",
+        "mentions"
+      ],
+      "category": "monitoring",
+      "strict": true
+    }
+  ]
+}

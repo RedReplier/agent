@@ -1,0 +1,12 @@
+{
+  "name": "redreplier",
+  "description": "Monitor Reddit & Hacker News for keyword mentions, manage websites/keywords, triage AI-scored lead mentions, and configure alerts via the RedReplier API",
+  "version": "1.0.0",
+  "author": {
+    "name": "RedReplier",
+    "url": "https://redreplier.com"
+  },
+  "repository": "https://github.com/redreplier/agent",
+  "license": "MIT",
+  "homepage": "https://redreplier.com"
+}

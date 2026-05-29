@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "redreplier": {
+      "type": "http",
+      "url": "https://mcp.redreplier.com/mcp",
+      "headers": {
+        "Authorization": "Bearer REDREPLIER_API_KEY_HERE"
+      }
+    }
+  }
+}
