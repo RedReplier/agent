@@ -1,6 +1,6 @@
 # RedReplier Agent
 
-Give your AI agent the ability to monitor **Reddit and Hacker News** for keyword mentions of your product — and triage the AI-scored leads — from a single command.
+Give your AI agent the ability to monitor **Reddit** for keyword mentions of your product — and triage the AI-scored leads — from a single command.
 
 **Works with:** Claude Code, Cursor, Windsurf, Codex, and any agent that supports skills.
 
@@ -18,7 +18,7 @@ npx skills add redreplier/agent
 
 ## Setup
 
-1. Create an account at [redreplier.com](https://redreplier.com)
+1. Create an account at [redreplier.com/signup](https://redreplier.com/signup)
 2. Add the websites and keywords you want to monitor
 3. Create an API token at [Settings → API Tokens](https://redreplier.com/api-tokens)
 4. Run:
@@ -32,7 +32,7 @@ Once installed, your AI agent can:
 
 - **Manage monitored websites** — add, update, AI-analyze, remove
 - **Manage keywords** — add, edit, enable/disable, activate within your plan
-- **Triage mentions** — list AI-scored Reddit/HN mentions, filter by relevance / keyword / source / date, approve or reject leads
+- **Triage mentions** — list AI-scored Reddit mentions, filter by relevance / keyword / source / date, approve or reject leads
 - **Explain relevance** — see why a mention scored the way it did
 - **Configure alerts** — enable email digests and set the cadence
 

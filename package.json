@@ -1,7 +1,7 @@
 {
   "name": "@redreplier/agent",
   "version": "1.0.0",
-  "description": "RedReplier agent — monitor Reddit & Hacker News for keyword mentions of your product from any AI agent",
+  "description": "RedReplier agent — monitor Reddit for keyword mentions of your product from any AI agent",
   "license": "MIT",
   "author": "RedReplier",
   "repository": {
@@ -13,7 +13,6 @@
     "agent",
     "ai-agent",
     "reddit",
-    "hacker-news",
     "monitoring",
     "redreplier",
     "mcp",

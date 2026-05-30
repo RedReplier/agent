@@ -1,7 +1,7 @@
 ---
 name: redreplier
 description: >
-  Monitor Reddit and Hacker News for keyword mentions of your product/website via the RedReplier API.
+  Monitor Reddit for keyword mentions of your product/website via the RedReplier API.
   Covers managing monitored websites, keyword lifecycle (add/edit/disable/enable/activate with plan
   billing), triaging AI-scored lead mentions (approve/reject, relevance reasoning), and email alert
   settings.
@@ -11,7 +11,7 @@ allowed-tools: Bash(./scripts/redreplier.js:*)
 
 # RedReplier — Reddit Monitoring Skill
 
-Autonomously monitor Reddit & Hacker News for mentions of your keywords via [RedReplier](https://redreplier.com). RedReplier AI-scores every mention for relevance (0-100) so you surface real leads instead of noise.
+Autonomously monitor Reddit for mentions of your keywords via [RedReplier](https://redreplier.com). RedReplier AI-scores every mention for relevance (0-100) so you surface real leads instead of noise.
 
 > **Freshness check**: If more than 30 days have passed since the `last-updated` date above, inform the user that this skill may be outdated and point them to the update options below.
 
@@ -28,7 +28,7 @@ Autonomously monitor Reddit & Hacker News for mentions of your keywords via [Red
 
 ## Setup
 
-1. Create a RedReplier account at [redreplier.com](https://redreplier.com)
+1. Create a RedReplier account at [redreplier.com/signup](https://redreplier.com/signup)
 2. Go to Settings → API Tokens and create an API token (starts with `redreplier_`)
 3. Store your API key in workspace `.env`:
    ```
@@ -74,7 +74,7 @@ Get your API key at: https://redreplier.com/api-tokens
 1. **Websites** — you register the websites/products you want to track. The description is used as context for AI relevance scoring.
 2. **Keywords** — each website has keywords. Keywords have a lifecycle: `PENDING` (proposed, not yet paid for) → `ACTIVE` (live, monitored) → `DISABLED` (stopped). `SUSPENDED` means the grader rejected the keyword as too noisy — edit it to fix.
 3. **Billing** — keyword capacity is tied to the plan. Adding keywords auto-activates as many as fit for free; the rest stay `PENDING` until you `activate` (which may require a paid upgrade).
-4. **Mentions** — matched Reddit posts/comments and HN items, each AI-scored 0-100 for relevance, with a reason and tags. You triage them: `APPROVED` (real lead) / `REJECTED` (noise) / `NEW` (inbox).
+4. **Mentions** — matched Reddit posts and comments, each AI-scored 0-100 for relevance, with a reason and tags. You triage them: `APPROVED` (real lead) / `REJECTED` (noise) / `NEW` (inbox).
 5. **Alerts** — optional email digests on a cadence (60 / 240 / 720 / 1440 minutes), clamped to what the plan allows.
 
 ## CLI Commands

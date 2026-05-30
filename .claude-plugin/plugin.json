@@ -1,6 +1,6 @@
 {
   "name": "redreplier",
-  "description": "Monitor Reddit & Hacker News for keyword mentions, manage websites/keywords, triage AI-scored lead mentions, and configure alerts via the RedReplier API",
+  "description": "Monitor Reddit for keyword mentions, manage websites/keywords, triage AI-scored lead mentions, and configure alerts via the RedReplier API",
   "version": "1.0.0",
   "author": {
     "name": "RedReplier",
