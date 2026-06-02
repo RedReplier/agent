@@ -5,14 +5,14 @@
     "email": "contact@redreplier.com"
   },
   "metadata": {
-    "description": "Give your AI agent Reddit monitoring — track keyword mentions of your product, triage AI-scored leads, and manage alerts",
+    "description": "Give your AI agent Reddit, Hacker News, X, and Bluesky monitoring — track keyword mentions of your product, triage AI-scored leads, and manage alerts",
     "version": "1.0.0"
   },
   "plugins": [
     {
       "name": "redreplier",
       "source": "./",
-      "description": "Monitor Reddit for keyword mentions, manage websites/keywords, triage AI-scored lead mentions, and configure alerts via the RedReplier API",
+      "description": "Monitor Reddit, Hacker News, X, and Bluesky for keyword mentions, manage websites/keywords, triage AI-scored lead mentions, and configure alerts via the RedReplier API",
       "version": "1.0.0",
       "author": {
         "name": "RedReplier"
@@ -22,6 +22,9 @@
       "license": "MIT",
       "keywords": [
         "reddit",
+        "hacker-news",
+        "twitter",
+        "bluesky",
         "monitoring",
         "social-listening",
         "mcp",

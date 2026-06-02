@@ -1,6 +1,6 @@
 # RedReplier Agent
 
-Give your AI agent the ability to monitor **Reddit** for keyword mentions of your product — and triage the AI-scored leads — from a single command.
+Give your AI agent the ability to monitor **Reddit, Hacker News, X, and Bluesky** for keyword mentions of your product — and triage the AI-scored leads — from a single command.
 
 **Works with:** Claude Code, Cursor, Windsurf, Codex, and any agent that supports skills.
 
@@ -32,16 +32,17 @@ Once installed, your AI agent can:
 
 - **Manage monitored websites** — add, update, AI-analyze, remove
 - **Manage keywords** — add, edit, enable/disable, activate within your plan
-- **Triage mentions** — list AI-scored Reddit mentions, filter by relevance / keyword / source / date, approve or reject leads
+- **Triage mentions** — list AI-scored mentions from Reddit, Hacker News, X, and Bluesky, filter by relevance / keyword / source / date, approve or reject leads
 - **Explain relevance** — see why a mention scored the way it did
 - **Configure alerts** — enable email digests and set the cadence
 
 ## Example
 
 ```
-You: Show me this week's best Reddit leads for my product.
+You: Show me this week's best leads for my product.
 Agent: 3 mentions scoring 70+. Top: r/webdev "Looking for an example tool" (85) —
-       a direct buying-intent question. Want me to approve it and reject the rest?
+       a direct buying-intent question, plus one on Hacker News and one on X.
+       Want me to approve them and reject the rest?
 ```
 
 ## Alternative: MCP

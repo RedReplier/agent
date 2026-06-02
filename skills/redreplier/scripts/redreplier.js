@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * RedReplier Agent Skill CLI
- * A zero-dependency Node.js script for Reddit keyword monitoring via the RedReplier API.
+ * A zero-dependency Node.js script for Reddit, Hacker News, X, and Bluesky keyword monitoring via the RedReplier API.
  *
  * MIT Licensed — https://github.com/redreplier/agent
  */

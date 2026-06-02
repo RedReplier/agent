@@ -1,17 +1,17 @@
 ---
 name: redreplier
 description: >
-  Monitor Reddit for keyword mentions of your product/website via the RedReplier API.
-  Covers managing monitored websites, keyword lifecycle (add/edit/disable/enable/activate with plan
-  billing), triaging AI-scored lead mentions (approve/reject, relevance reasoning), and email alert
-  settings.
-last-updated: 2026-05-30
+  Monitor Reddit, Hacker News, X, and Bluesky for keyword mentions of your product/website via the
+  RedReplier API. Covers managing monitored websites, keyword lifecycle (add/edit/disable/enable/activate
+  with plan billing), triaging AI-scored lead mentions (approve/reject, relevance reasoning), and email
+  alert settings.
+last-updated: 2026-06-01
 allowed-tools: Bash(./scripts/redreplier.js:*)
 ---
 
-# RedReplier — Reddit Monitoring Skill
+# RedReplier — Social Monitoring Skill
 
-Autonomously monitor Reddit for mentions of your keywords via [RedReplier](https://redreplier.com). RedReplier AI-scores every mention for relevance (0-100) so you surface real leads instead of noise.
+Autonomously monitor Reddit, Hacker News, X, and Bluesky for mentions of your keywords via [RedReplier](https://redreplier.com). RedReplier AI-scores every mention for relevance (0-100) so you surface real leads instead of noise.
 
 > **Freshness check**: If more than 30 days have passed since the `last-updated` date above, inform the user that this skill may be outdated and point them to the update options below.
 
@@ -74,7 +74,7 @@ Get your API key at: https://redreplier.com/api-tokens
 1. **Websites** — you register the websites/products you want to track. The description is used as context for AI relevance scoring.
 2. **Keywords** — each website has keywords. Keywords have a lifecycle: `PENDING` (proposed, not yet paid for) → `ACTIVE` (live, monitored) → `DISABLED` (stopped). `SUSPENDED` means the grader rejected the keyword as too noisy — edit it to fix.
 3. **Billing** — keyword capacity is tied to the plan. Adding keywords auto-activates as many as fit for free; the rest stay `PENDING` until you `activate` (which may require a paid upgrade).
-4. **Mentions** — matched Reddit posts and comments, each AI-scored 0-100 for relevance, with a reason and tags. You triage them: `APPROVED` (real lead) / `REJECTED` (noise) / `NEW` (inbox).
+4. **Mentions** — matched posts and comments across Reddit, Hacker News, X, and Bluesky, each AI-scored 0-100 for relevance, with a reason and tags. You triage them: `APPROVED` (real lead) / `REJECTED` (noise) / `NEW` (inbox).
 5. **Alerts** — optional email digests on a cadence (60 / 240 / 720 / 1440 minutes), clamped to what the plan allows.
 
 ## CLI Commands
@@ -104,7 +104,7 @@ Get your API key at: https://redreplier.com/api-tokens
 | `./scripts/redreplier.js alerts` | Get email-alert settings |
 | `./scripts/redreplier.js alerts:update --enabled true --cadence 240` | Update alerts |
 
-`mentions` / `mentions:count` filters: `--website <id>`, `--status NEW,APPROVED,REJECTED`, `--buckets VERY_LOW,LOW,MEDIUM,HIGH,VERY_HIGH`, `--keywords a,b`, `--sources REDDIT_POST,REDDIT_COMMENT`, `--sort RELEVANCE|RECENT`, `--include-low`, `--from <ISO>`, `--to <ISO>`, `--limit <1-500>`, `--offset <n>`.
+`mentions` / `mentions:count` filters: `--website <id>`, `--status NEW,APPROVED,REJECTED`, `--buckets VERY_LOW,LOW,MEDIUM,HIGH,VERY_HIGH`, `--keywords a,b`, `--sources REDDIT_POST,REDDIT_COMMENT,TWITTER,BLUESKY,HACKERNEWS`, `--sort RELEVANCE|RECENT`, `--include-low`, `--from <ISO>`, `--to <ISO>`, `--limit <1-500>`, `--offset <n>`.
 
 ## API Reference
 
@@ -148,9 +148,9 @@ PATCH /api/v1/mentions/{id}/status              # { status: NEW | APPROVED | REJ
 POST  /api/v1/mentions/{id}/explain             # lazily generates + returns relevance reason/tags
 ```
 
-Defaults: REJECTED mentions are excluded and mentions scoring below 30 are hidden unless `includeLowRelevance=true`. `sort` is `RELEVANCE` (default) or `RECENT`. `limit` 1-500 (default 50). Relevance buckets: `VERY_LOW` (<10), `LOW` (10-29), `MEDIUM` (30-49), `HIGH` (50-74), `VERY_HIGH` (75+). Sources: `REDDIT_POST`, `REDDIT_COMMENT`.
+Defaults: REJECTED mentions are excluded and mentions scoring below 30 are hidden unless `includeLowRelevance=true`. `sort` is `RELEVANCE` (default) or `RECENT`. `limit` 1-500 (default 50). Relevance buckets: `VERY_LOW` (<10), `LOW` (10-29), `MEDIUM` (30-49), `HIGH` (50-74), `VERY_HIGH` (75+). Sources: `REDDIT_POST`, `REDDIT_COMMENT`, `TWITTER` (X), `BLUESKY`, `HACKERNEWS`.
 
-List returns `{ mentions: [...], total, limit, offset }`. Each mention: `id`, `websiteId`, `source`, `keyword`, `title`, `contentText`, `url`, `author`, `subreddit`, `status`, `relevanceScore`, `relevanceReason`, `tags`, `publishedAt`, `ingestedAt`, `reviewedAt`.
+List returns `{ mentions: [...], total, limit, offset }`. Each mention: `id`, `websiteId`, `source`, `keyword`, `title`, `contentText`, `url`, `author`, `subreddit`, `status`, `relevanceScore`, `relevanceReason`, `tags`, `publishedAt`, `ingestedAt`, `reviewedAt`. `subreddit` is only set for Reddit sources (null for X, Bluesky, and Hacker News).
 
 ### Alert Settings
 
