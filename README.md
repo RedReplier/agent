@@ -1,5 +1,7 @@
 # RedReplier Agent
 
+[![smithery badge](https://smithery.ai/badge/tarasshyn/redreplier)](https://smithery.ai/servers/tarasshyn/redreplier)
+
 Give your AI agent the ability to monitor **Reddit, Hacker News, X, and Bluesky** for keyword mentions of your product — and triage the AI-scored leads — from a single command.
 
 **Works with:** Claude Code, Cursor, Windsurf, Codex, and any agent that supports skills.
