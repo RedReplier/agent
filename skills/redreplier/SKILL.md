@@ -5,7 +5,7 @@ description: >
   RedReplier API. Covers managing monitored websites, keyword lifecycle (add/edit/disable/enable/activate
   with plan billing), triaging AI-scored lead mentions (approve/reject, relevance reasoning), and email
   alert settings.
-last-updated: 2026-06-01
+last-updated: 2026-08-29
 allowed-tools: Bash(./scripts/redreplier.js:*)
 ---
 
