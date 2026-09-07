@@ -1,0 +1,23 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "redreplier",
+  "version": "1.0.0",
+  "description": "Monitor Reddit, Hacker News, X, and Bluesky for keyword mentions of your product, triage AI-scored leads, manage monitored websites and keywords, and configure alert digests through the RedReplier API.",
+  "author": {
+    "name": "RedReplier",
+    "email": "contact@redreplier.com",
+    "url": "https://redreplier.com"
+  },
+  "homepage": "https://redreplier.com",
+  "repository": "https://github.com/RedReplier/agent",
+  "license": "MIT",
+  "keywords": [
+    "redreplier",
+    "reddit",
+    "hacker-news",
+    "social-listening",
+    "lead-generation",
+    "keyword-monitoring"
+  ],
+  "logo": "https://redreplier.com/logo_small.png"
+}
