@@ -103,7 +103,7 @@ function createMcpServer(apiClient?: RestClient): McpServer {
     {
       title: 'List Monitored Websites',
       description:
-        'List all monitored websites for this account, each with its keywords (value + status: PENDING, ACTIVE, DISABLED, SUSPENDED). Start here — you need website IDs and keyword IDs for most other tools.',
+        "List every website this account monitors, each with its keywords (id, value, status: PENDING, ACTIVE, DISABLED, SUSPENDED). Call this first: most other tools need a websiteId or keywordId from it. Reading also promotes any PENDING keyword that fits the plan's free headroom to ACTIVE, without ever charging. Use get_website instead when you already hold a websiteId and want one record. Only ACTIVE keywords match new mentions, so a long PENDING list explains a quiet inbox. Scope is the account behind the API token.",
       inputSchema: {},
       outputSchema: resultSchema(
         'Array of monitored websites, each with its ID, URL, name, description, and keywords with their statuses.',
@@ -128,12 +128,12 @@ function createMcpServer(apiClient?: RestClient): McpServer {
     {
       title: 'Get Monitored Website',
       description:
-        'Get a single monitored website by ID, including all of its keywords and their statuses.',
+        'Get one monitored website by ID with its full keyword list and statuses (PENDING, ACTIVE, DISABLED, SUSPENDED). Use it to re-check keyword statuses after add_keywords, enable_keyword, or activate_pending_keywords; use list_websites instead when you do not have the ID yet or want every site. websiteId comes from list_websites or create_website. Returns 404 when the website does not exist or belongs to another account, and 400 when websiteId is not a UUID.',
       inputSchema: {
-        websiteId: z.string().describe('Monitored website ID (UUID)'),
+        websiteId: z.string().describe('Monitored website ID (UUID) from list_websites'),
       },
       outputSchema: resultSchema(
-        'The monitored website with its keywords and their statuses.',
+        'The monitored website with its keyword list, each keyword carrying id, value, and status.',
       ),
       annotations: {
         readOnlyHint: true,
@@ -155,24 +155,26 @@ function createMcpServer(apiClient?: RestClient): McpServer {
     {
       title: 'Add Website to Monitor',
       description:
-        'Add a website to monitor across Reddit, Hacker News, X, and Bluesky. Keywords start as PENDING and only go live (ACTIVE) once they fit the plan — call activate_pending_keywords afterwards. The first website for an account also seeds keywords from the shared feed. If you omit description, the back-end scrapes and AI-generates one.',
+        'Add a website to monitor across Reddit, Hacker News, X, and Bluesky. The domain must be new to this account: a duplicate returns 400, and re-adding a domain removed with delete_website revives that record. description is the context every mention is scored against. Omit it and the server scrapes the URL to write one, spending one AI generation from the plan quota; if that scrape fails or the quota is exhausted the site is created with description null and its mentions go unscored (reason "Scoring skipped: website description missing"), so check the response and set one with update_website or analyze_website. Pass your own description to skip the scrape. Initial keywords are stored PENDING: list_websites or add_keywords promotes those that fit the plan for free, and activate_pending_keywords covers the rest, possibly for a charge. AI-suggested keywords are added in the background and show up on the website later. Returns 400 when the plan has no website slots left.',
       inputSchema: {
         url: z.string().describe('Full website URL (e.g. "https://example.com")'),
         name: z.string().optional().describe('Display name for the website'),
         keywords: z
           .array(z.string().max(255))
           .optional()
-          .describe('Initial keywords to monitor (added as PENDING)'),
+          .describe(
+            'Initial keywords, stored as PENDING; list_websites promotes those that fit the plan for free',
+          ),
         description: z
           .string()
           .max(5000)
           .optional()
           .describe(
-            'Manual description (skips scraping/AI). Used as context when scoring mention relevance',
+            'Product summary the AI scores every mention against; without it new mentions are not scored. Draft one with analyze_website',
           ),
       },
       outputSchema: resultSchema(
-        'The created website record with its description and initial keywords with their statuses.',
+        'The created website with its id, domain, description, and keywords (initial ones PENDING).',
       ),
       annotations: {
         readOnlyHint: false,
@@ -194,7 +196,7 @@ function createMcpServer(apiClient?: RestClient): McpServer {
     {
       title: 'Update Monitored Website',
       description:
-        "Update a monitored website's display name or description. The description feeds the AI relevance scoring, so keep it accurate.",
+        "Update a monitored website's display name and/or description. Only the fields you pass change: omitted fields keep their value, and an empty description clears it. The description is the context the AI scores every new mention against, so keep it an accurate summary of the product; mentions already scored are not rescored. Use analyze_website to draft a description from the live site before saving it here. URL and keywords cannot change through this tool: use add_keywords, edit_keyword, or disable_keyword for keywords. Returns the updated website with its keyword list.",
       inputSchema: {
         websiteId: z.string().describe('Monitored website ID (UUID)'),
         name: z.string().optional().describe('New display name'),
@@ -202,10 +204,10 @@ function createMcpServer(apiClient?: RestClient): McpServer {
           .string()
           .max(5000)
           .optional()
-          .describe('New description (used for relevance scoring)'),
+          .describe('New scoring context; an empty string clears it, omit to keep the current one'),
       },
       outputSchema: resultSchema(
-        'The updated website record with its new name and description.',
+        'The updated website with its name, description, and keyword list.',
       ),
       annotations: {
         readOnlyHint: false,
@@ -227,11 +229,11 @@ function createMcpServer(apiClient?: RestClient): McpServer {
     {
       title: 'Stop Monitoring Website',
       description:
-        'Stop monitoring a website (soft delete). Its keywords stop matching new mentions.',
+        'Stop monitoring a website (soft delete). The site and its keywords leave list_websites immediately and stop matching new mentions; there is no restore tool, but create_website with the same URL revives the record. Use this only when the whole site should go: use disable_keyword to pause one keyword and keep the site, and delete_keyword for a PENDING keyword you never want. Confirm with the user first and name the domain, not just the ID. Returns { deleted: true }; 404 if the ID is unknown to this account.',
       inputSchema: {
         websiteId: z.string().describe('Monitored website ID (UUID)'),
       },
-      outputSchema: resultSchema('Confirmation that the website was deleted.'),
+      outputSchema: resultSchema('{ deleted: true } once the website is soft-deleted.'),
       annotations: {
         readOnlyHint: false,
         destructiveHint: true,
@@ -252,12 +254,12 @@ function createMcpServer(apiClient?: RestClient): McpServer {
     {
       title: 'Analyze Website',
       description:
-        'Scrape a URL and generate an AI description of the business — useful to preview/seed the description before creating a website. Consumes AI quota.',
+        'Scrape a URL and return an AI-written business description as { description }, without creating or changing any website. Use it to draft or preview the text before create_website or update_website, then pass the result as their description. Consumes one AI generation from the monthly quota unless a precomputed description already exists for that domain, and refunds it if generation fails. Returns 400 when the quota is exhausted or url is not a valid URL, and an error when the page has too little readable text.',
       inputSchema: {
-        url: z.string().describe('Website URL to analyze'),
+        url: z.string().describe('Full website URL to scrape (e.g. "https://example.com")'),
       },
       outputSchema: resultSchema(
-        'The AI-generated business description for the analyzed URL.',
+        '{ description }: the AI-written business description, ready to pass to create_website or update_website.',
       ),
       annotations: {
         readOnlyHint: false,
@@ -283,16 +285,18 @@ function createMcpServer(apiClient?: RestClient): McpServer {
     {
       title: 'Add Keywords',
       description:
-        'Add keywords to a website. New keywords are added as PENDING, then any that fit the plan are promoted to ACTIVE automatically. Keywords beyond the plan stay PENDING until activate_pending_keywords (which may require a plan upgrade).',
+        "Add keywords to a monitored website. Values are trimmed, lowercased, and de-duplicated; ones already ACTIVE on that site are skipped, and re-adding a DISABLED one resets it to PENDING (prefer enable_keyword). Each new keyword starts PENDING, then as many as fit the plan's free headroom flip to ACTIVE at once, with no charge. The rest stay PENDING and match nothing until activate_pending_keywords, which may charge an upgrade; run preview_activate_pending first. Adding is unlimited. Use edit_keyword to reword an existing keyword. Returns the whole website with its updated keyword list, not only the new keywords.",
       inputSchema: {
         websiteId: z.string().describe('Monitored website ID (UUID)'),
         keywords: z
           .array(z.string().max(255))
           .min(1)
-          .describe('Keywords to add (e.g. ["my product", "competitor name"])'),
+          .describe(
+            'Keywords to add (e.g. ["my product", "competitor name"]); trimmed, lowercased, and de-duplicated, max 255 characters each',
+          ),
       },
       outputSchema: resultSchema(
-        'The added keywords with their IDs and resulting statuses (ACTIVE or PENDING).',
+        'The whole website with its full keyword list (id, value, status), including the new keywords as ACTIVE or PENDING.',
       ),
       annotations: {
         readOnlyHint: false,
@@ -316,13 +320,16 @@ function createMcpServer(apiClient?: RestClient): McpServer {
     {
       title: 'Edit Keyword',
       description:
-        "Change a keyword's text. Editing a grader-suspended keyword is free; editing a live keyword counts against the monthly change allowance (see keyword_change_usage). The new value is re-graded and keeps any paid slot it already held.",
+        "Change a keyword's text in place, keeping its ID and any paid slot. Edits are unlimited on every plan (keyword_change_usage reports limit -1). The new value is re-graded for noise; an ACTIVE keyword stays ACTIVE, while a PENDING, DISABLED, or SUSPENDED one goes ACTIVE if the plan has a free slot and PENDING otherwise. Use this to fix a SUSPENDED keyword the grader rejected, or to reword instead of adding a variant with add_keywords. A case-only change is a no-op; a value already on the website returns 400.",
       inputSchema: {
         keywordId: z.string().describe('Keyword ID (UUID)'),
-        value: z.string().max(255).describe('New keyword text'),
+        value: z
+          .string()
+          .max(255)
+          .describe('New keyword text; trimmed and lowercased, must not duplicate another keyword on the same website'),
       },
       outputSchema: resultSchema(
-        'The updated keyword with its new value and status.',
+        'The updated keyword with its new value and resulting status (ACTIVE or PENDING).',
       ),
       annotations: {
         readOnlyHint: false,
@@ -344,11 +351,11 @@ function createMcpServer(apiClient?: RestClient): McpServer {
     {
       title: 'Disable Keyword',
       description:
-        'Stop monitoring a keyword (sets it DISABLED). Disabling is unlimited and immediate; any price reduction is applied at the end of the billing cycle.',
+        'Stop monitoring one keyword: sets it DISABLED and it stops matching new mentions immediately. Unlimited and reversible with enable_keyword. Billing does not drop right away: the keyword keeps its paid slot until the end of the current billing cycle, so re-enabling it in the same cycle is free but a new keyword cannot reuse that slot for free; any price reduction is scheduled for the cycle boundary. Use delete_keyword instead for a PENDING keyword you never want. Calling it on an already DISABLED keyword returns it unchanged.',
       inputSchema: {
         keywordId: z.string().describe('Keyword ID (UUID)'),
       },
-      outputSchema: resultSchema('The keyword with its status set to DISABLED.'),
+      outputSchema: resultSchema('The keyword with status DISABLED; its paid slot is held until the billing cycle ends.'),
       annotations: {
         readOnlyHint: false,
         destructiveHint: true,
@@ -369,12 +376,12 @@ function createMcpServer(apiClient?: RestClient): McpServer {
     {
       title: 'Enable Keyword',
       description:
-        'Re-activate a disabled keyword. If it fits the current plan it goes ACTIVE immediately; otherwise it becomes PENDING and an upgrade is required.',
+        'Re-activate one DISABLED keyword. It goes ACTIVE at once when it fits the plan or was disabled earlier in this billing cycle (it still holds its slot). Otherwise it is set PENDING and the required plan upgrade is charged immediately; it flips ACTIVE once the payment settles, so re-check with get_website. Use activate_pending_keywords instead to bring every PENDING keyword live in one call, and add_keywords for a keyword that does not exist yet. Preview cost with preview_keyword_billing first. Returns 400 without an active subscription; an ACTIVE keyword is returned unchanged.',
       inputSchema: {
         keywordId: z.string().describe('Keyword ID (UUID)'),
       },
       outputSchema: resultSchema(
-        'The keyword with its resulting status (ACTIVE or PENDING).',
+        'The keyword with status ACTIVE, or PENDING when an upgrade was charged and its payment has not settled yet.',
       ),
       annotations: {
         readOnlyHint: false,
@@ -396,11 +403,11 @@ function createMcpServer(apiClient?: RestClient): McpServer {
     {
       title: 'Delete Keyword',
       description:
-        'Permanently delete a keyword. Only PENDING keywords can be deleted — disable ACTIVE keywords and edit SUSPENDED ones instead.',
+        'Permanently delete one keyword. Only PENDING keywords qualify (never billed, never live), so there is no billing effect and no undo. Any other status returns 400 "Only pending keywords can be removed": use disable_keyword for an ACTIVE keyword, edit_keyword to fix a SUSPENDED one, and delete_website to drop a whole site. Prefer this over leaving unwanted PENDING keywords in place, because activate_pending_keywords would otherwise try to pay for them. Returns { deleted: true }.',
       inputSchema: {
         keywordId: z.string().describe('Keyword ID (UUID)'),
       },
-      outputSchema: resultSchema('Confirmation that the keyword was deleted.'),
+      outputSchema: resultSchema('{ deleted: true } once the PENDING keyword is removed.'),
       annotations: {
         readOnlyHint: false,
         destructiveHint: true,
@@ -421,10 +428,10 @@ function createMcpServer(apiClient?: RestClient): McpServer {
     {
       title: 'Activate Pending Keywords',
       description:
-        'Activate PENDING keywords. Promotes everything that fits the current plan for free; if more keywords remain pending it charges the upgrade needed to cover them. Returns the updated websites. Use preview_activate_pending first to see the cost.',
+        'Activate every PENDING keyword across the account in two steps: promote as many as the current plan covers for free, then charge an immediate prorated upgrade to cover the remainder (keywords disabled this cycle still hold slots and count). Keywords covered by the upgrade stay PENDING in the response and flip ACTIVE once the payment settles; re-check with list_websites. Always call preview_activate_pending first, show the user immediateCharge and targetPlanName, and get explicit consent; never call this in a loop. Use enable_keyword for a single DISABLED keyword. Fails with 400 when there is no active subscription or the charge fails, leaving keywords PENDING. Returns the updated websites.',
       inputSchema: {},
       outputSchema: resultSchema(
-        'The updated websites reflecting the newly activated keyword statuses.',
+        'All websites with their keyword statuses; keywords waiting on an upgrade payment still show PENDING.',
       ),
       annotations: {
         readOnlyHint: false,
@@ -446,10 +453,10 @@ function createMcpServer(apiClient?: RestClient): McpServer {
     {
       title: 'Preview Pending Keyword Activation',
       description:
-        'Preview the billing impact of activating all currently pending keywords (current vs target plan, prorated immediate charge) without making any change.',
+        'Preview the billing impact of activate_pending_keywords without changing anything. Takes no input: it prices the plan needed for the keywords committed this cycle (ACTIVE plus disabled this cycle) plus every PENDING keyword. Returns currentPlanName, currentMonthlyPrice, targetPlanName, targetMonthlyPrice, targetKeywords, immediateCharge (prorated amount charged now), isUpgrade, isDowngrade, requiresImmediatePayment; immediateCharge 0 with isUpgrade false means activation is free. Use this right before activate_pending_keywords. Use preview_keyword_billing instead to price an arbitrary keyword count, for example before add_keywords or enable_keyword.',
       inputSchema: {},
       outputSchema: resultSchema(
-        'Billing preview with the current plan, target plan, and prorated immediate charge.',
+        'Billing preview: currentPlanName, currentMonthlyPrice, targetPlanName, targetMonthlyPrice, targetKeywords, immediateCharge, isUpgrade, isDowngrade, requiresImmediatePayment.',
       ),
       annotations: {
         readOnlyHint: true,
@@ -471,16 +478,18 @@ function createMcpServer(apiClient?: RestClient): McpServer {
     {
       title: 'Preview Keyword Billing',
       description:
-        'Preview the plan and price required for a desired number of active keywords, without changing anything.',
+        'Preview the plan and price needed for a chosen total of active keywords, without changing anything. desiredKeywordCount is the absolute number of keywords you want live across the account, not the number being added: count the ACTIVE keywords from list_websites and add the new ones. Returns the same shape as preview_activate_pending (currentPlanName, targetPlanName, targetMonthlyPrice, immediateCharge, isUpgrade, isDowngrade, requiresImmediatePayment). Use this for what-if pricing before add_keywords or enable_keyword; use preview_activate_pending instead for the exact cost of activating the keywords already PENDING, which it counts for you.',
       inputSchema: {
         desiredKeywordCount: z
           .number()
           .int()
           .min(0)
-          .describe('Total number of active keywords you want'),
+          .describe(
+            'Total ACTIVE keywords wanted across the account after the change (absolute count, not an increment)',
+          ),
       },
       outputSchema: resultSchema(
-        'The plan and price required for the desired number of active keywords.',
+        'Billing preview for that keyword count, same shape as preview_activate_pending: target plan, monthly price, prorated immediateCharge, isUpgrade, isDowngrade.',
       ),
       annotations: {
         readOnlyHint: true,
@@ -504,10 +513,10 @@ function createMcpServer(apiClient?: RestClient): McpServer {
     {
       title: 'Get Keyword Edit Allowance',
       description:
-        'Get the current monthly keyword-EDIT allowance and how much is used (limit -1 means unlimited). Adding and disabling keywords are unlimited; only edits count.',
+        'Get the monthly keyword-edit allowance for the account as { limit, used, remaining, unlimited }, where limit -1 means unlimited. Only edit_keyword ever counted toward it; add_keywords, disable_keyword, and enable_keyword never did. Every current plan reports unlimited, so there is no need to check it before edit_keyword; it remains for clients that budget edits. Not a capacity or billing preview: use preview_keyword_billing or preview_activate_pending for plan pricing, and list_websites to count ACTIVE keywords.',
       inputSchema: {},
       outputSchema: resultSchema(
-        'The monthly keyword-edit allowance limit and the amount used.',
+        '{ limit, used, remaining, unlimited }; limit -1 and unlimited true mean edits are not metered.',
       ),
       annotations: {
         readOnlyHint: true,
@@ -531,27 +540,27 @@ function createMcpServer(apiClient?: RestClient): McpServer {
     {
       title: 'List Mentions',
       description:
-        'List mentions matched for this account across Reddit, Hacker News, X, and Bluesky, AI-scored for relevance (0-100). By default REJECTED mentions are excluded and anything scoring below 30 is hidden — set includeLowRelevance to see everything. Filter by website, status, score bucket, keyword, source, and ingestion date.',
+        "List mentions matched for this account across Reddit, Hacker News, X, and Bluesky, each AI-scored 0-100 with its source, matched keyword, status, content, and any generated relevanceReason and aiReplySuggestion. Two defaults hide rows: REJECTED mentions are excluded unless statuses names them, and mentions below the website's minimum score (30 by default) are hidden unless includeLowRelevance is true, even when scoreBuckets asks for LOW or VERY_LOW. Returns { mentions, total, limit, offset }; page with offset while offset < total. Sort RELEVANCE for the best leads, RECENT for what is new; from/to filter on ingestion time, not publish time. Use count_mentions for the number alone, explain_mention for one mention's reasoning, and update_mention_status to triage.",
       inputSchema: {
         websiteId: z.string().optional().describe('Filter to one website (UUID)'),
         statuses: z
           .array(MentionStatus)
           .optional()
-          .describe('Filter by status (NEW, APPROVED, REJECTED)'),
+          .describe('Filter by status (NEW, APPROVED, REJECTED); omit to get everything except REJECTED'),
         scoreBuckets: z
           .array(RelevanceBucket)
           .optional()
           .describe(
-            'Relevance buckets: VERY_LOW (<10), LOW (10-29), MEDIUM (30-49), HIGH (50-74), VERY_HIGH (75+)',
+            'Relevance buckets, OR-combined: VERY_LOW (<10), LOW (10-29), MEDIUM (30-49), HIGH (50-74), VERY_HIGH (75+). LOW and VERY_LOW only show when includeLowRelevance is also true',
           ),
         includeLowRelevance: z
           .boolean()
           .optional()
-          .describe('Include mentions scoring below 30 (hidden by default)'),
+          .describe('Include mentions below the website minimum score (30 by default), hidden otherwise'),
         keywords: z
           .array(z.string())
           .optional()
-          .describe('Filter to mentions matched by these keywords'),
+          .describe('Filter to mentions matched by these keyword values (case-insensitive exact match, as shown in list_websites)'),
         sources: z
           .array(MentionSource)
           .optional()
@@ -580,7 +589,7 @@ function createMcpServer(apiClient?: RestClient): McpServer {
         offset: z.number().int().min(0).optional().default(0).describe('Pagination offset'),
       },
       outputSchema: resultSchema(
-        'Array of mentions, each with its source, matched keyword, relevance score, status, and content.',
+        '{ mentions, total, limit, offset }: each mention has id, source, keyword, title, contentText, url, author, subreddit (Reddit only), status, relevanceScore, relevanceReason, aiReplySuggestion, tags, publishedAt, ingestedAt, reviewedAt.',
       ),
       annotations: {
         readOnlyHint: true,
@@ -602,19 +611,44 @@ function createMcpServer(apiClient?: RestClient): McpServer {
     {
       title: 'Count Mentions',
       description:
-        'Count mentions matching the same filters as list_mentions (without returning the rows). Useful for pagination and dashboards.',
+        "Count mentions matching the same filters as list_mentions, returning { total } and no rows. The same defaults apply: REJECTED excluded unless statuses includes it, and scores below the website's minimum (30 by default) hidden unless includeLowRelevance is true. Use it for dashboards, to size a triage batch, or to decide whether paging list_mentions is worthwhile; list_mentions already returns total with its rows, so skip this when you fetch rows anyway. Takes no sort, limit, or offset.",
       inputSchema: {
         websiteId: z.string().optional().describe('Filter to one website (UUID)'),
-        statuses: z.array(MentionStatus).optional(),
-        scoreBuckets: z.array(RelevanceBucket).optional(),
-        includeLowRelevance: z.boolean().optional(),
-        keywords: z.array(z.string()).optional(),
-        sources: z.array(MentionSource).optional(),
-        from: z.string().optional().describe('ISO 8601 datetime'),
-        to: z.string().optional().describe('ISO 8601 datetime'),
+        statuses: z
+          .array(MentionStatus)
+          .optional()
+          .describe('Filter by status (NEW, APPROVED, REJECTED); omit to count everything except REJECTED'),
+        scoreBuckets: z
+          .array(RelevanceBucket)
+          .optional()
+          .describe(
+            'Relevance buckets, OR-combined: VERY_LOW (<10), LOW (10-29), MEDIUM (30-49), HIGH (50-74), VERY_HIGH (75+). LOW and VERY_LOW only count when includeLowRelevance is also true',
+          ),
+        includeLowRelevance: z
+          .boolean()
+          .optional()
+          .describe('Include mentions below the website minimum score (30 by default), hidden otherwise'),
+        keywords: z
+          .array(z.string())
+          .optional()
+          .describe('Count only mentions matched by these keyword values (case-insensitive exact match)'),
+        sources: z
+          .array(MentionSource)
+          .optional()
+          .describe(
+            'Filter by source: REDDIT_POST, REDDIT_COMMENT, TWITTER (X), BLUESKY, HACKERNEWS',
+          ),
+        from: z
+          .string()
+          .optional()
+          .describe('Only mentions ingested at/after this ISO 8601 datetime'),
+        to: z
+          .string()
+          .optional()
+          .describe('Only mentions ingested at/before this ISO 8601 datetime'),
       },
       outputSchema: resultSchema(
-        'The number of mentions matching the given filters.',
+        '{ total }: the number of mentions matching the filters after the default exclusions.',
       ),
       annotations: {
         readOnlyHint: true,
@@ -636,12 +670,14 @@ function createMcpServer(apiClient?: RestClient): McpServer {
     {
       title: 'Update Mention Status',
       description:
-        "Set a mention's status. APPROVED marks it as a real lead/relevant; REJECTED hides it (and excludes it from default lists); NEW resets it to the inbox.",
+        "Set one mention's triage status. APPROVED marks it a real lead; REJECTED marks it noise and drops it from default list_mentions and count_mentions results (pass statuses to see it again); NEW returns it to the inbox. Fully reversible: any status can move to any other; reviewedAt is stamped when leaving NEW and cleared on NEW. Judge on the content and relevanceScore, calling explain_mention first when the score looks off; never approve a mention you have not read. mentionId comes from list_mentions. Returns the updated mention.",
       inputSchema: {
         mentionId: z.string().describe('Mention ID (UUID)'),
-        status: MentionStatus.describe('New status: NEW, APPROVED, or REJECTED'),
+        status: MentionStatus.describe(
+          'New status: APPROVED (real lead), REJECTED (noise, hidden from default lists), or NEW (back to inbox)',
+        ),
       },
-      outputSchema: resultSchema('The mention with its updated status.'),
+      outputSchema: resultSchema('The updated mention with its new status and reviewedAt (null when NEW).'),
       annotations: {
         readOnlyHint: false,
         destructiveHint: false,
@@ -664,12 +700,12 @@ function createMcpServer(apiClient?: RestClient): McpServer {
     {
       title: 'Explain Mention Score',
       description:
-        'Get (and lazily generate) the AI relevance reasoning and tags for a single mention — why it was scored the way it was.',
+        'Get the AI relevance reasoning (relevanceReason), tags, and a drafted reply (aiReplySuggestion) for one mention, generating whatever is missing on first call and storing it, so later calls are instant reads. The website must have a description; without one the mention comes back unchanged. Use it when a score looks wrong or before update_mention_status on a borderline lead, not across every row of list_mentions, since generation is slow. Returns the full mention object, or null (not a 404) when the ID is unknown to this account.',
       inputSchema: {
-        mentionId: z.string().describe('Mention ID (UUID)'),
+        mentionId: z.string().describe('Mention ID (UUID) from list_mentions'),
       },
       outputSchema: resultSchema(
-        'The AI relevance reasoning and tags for the mention.',
+        'The full mention with relevanceReason, tags, and aiReplySuggestion filled in; null when the mention is not found.',
       ),
       annotations: {
         readOnlyHint: false,
@@ -693,10 +729,10 @@ function createMcpServer(apiClient?: RestClient): McpServer {
     {
       title: 'Get Alert Settings',
       description:
-        'Get the email-alert settings: whether alerts are enabled, the cadence in minutes, the fastest cadence the plan allows, and the available cadence options.',
+        "Get the account's email-alert settings: enabled, cadenceMinutes (the digest interval in effect), minIntervalMinutes (the fastest cadence the plan allows), and availableCadences (the subset of 15, 30, 60, 120, 180, 240, 720, 1440 at or above that floor). cadenceMinutes is never reported below the floor, even if a faster value was saved before a plan downgrade. Call it before update_alert_settings to pick a value from availableCadences, and after it to confirm what applied. Read-only; the digests themselves are sent by the platform on that cadence.",
       inputSchema: {},
       outputSchema: resultSchema(
-        "The alert settings: enabled flag, cadence in minutes, the plan's fastest allowed cadence, and available cadence options.",
+        '{ enabled, cadenceMinutes, minIntervalMinutes, availableCadences }: the cadence in effect, the plan floor, and the cadences you may pick.',
       ),
       annotations: {
         readOnlyHint: true,
@@ -718,17 +754,19 @@ function createMcpServer(apiClient?: RestClient): McpServer {
     {
       title: 'Update Alert Settings',
       description:
-        "Enable/disable mention email alerts and set the cadence. cadenceMinutes must be one of 60, 240, 720, 1440 and is clamped up to the plan's fastest allowed interval. Omit cadenceMinutes to use the plan default.",
+        'Turn mention email alerts on or off and set how often the digest is sent. enabled is required on every call. cadenceMinutes must be one of 15, 30, 60, 120, 180, 240, 720, 1440, otherwise 400 "Invalid alert frequency for your plan"; a value faster than the plan floor is silently raised to the floor. Both settings are replaced on every call: omitting cadenceMinutes resets it to the fastest cadence the plan allows, so pass the current value when only toggling enabled. Use get_alert_settings for availableCadences before, and to confirm the applied cadence after. Returns the resolved settings.',
       inputSchema: {
         enabled: z.boolean().describe('Turn email alerts on or off'),
         cadenceMinutes: z
           .number()
           .int()
           .optional()
-          .describe('Alert frequency in minutes: 60 (hourly), 240 (4h), 720 (12h), 1440 (daily)'),
+          .describe(
+            'Digest interval in minutes: 15, 30, 60, 120, 180, 240, 720, or 1440; raised to the plan floor when faster than allowed, reset to the fastest allowed when omitted',
+          ),
       },
       outputSchema: resultSchema(
-        'The saved alert settings with the enabled flag and effective cadence.',
+        'The resolved settings after clamping: { enabled, cadenceMinutes, minIntervalMinutes, availableCadences }.',
       ),
       annotations: {
         readOnlyHint: false,
