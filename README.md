@@ -65,11 +65,34 @@ For deeper integration with Claude Desktop, Cursor, or other MCP-compatible clie
 }
 ```
 
+### Run it locally
+
+The server source lives in [`mcp-server/`](./mcp-server). Run it over stdio with [Bun](https://bun.sh):
+
+```json
+{
+  "mcpServers": {
+    "redreplier": {
+      "command": "bun",
+      "args": ["run", "/path/to/agent/mcp-server/src/index.ts"],
+      "env": { "REDREPLIER_API_TOKEN": "redreplier_your_key" }
+    }
+  }
+}
+```
+
+Or with Docker:
+
+```bash
+docker build -t redreplier-mcp .
+docker run -i -e REDREPLIER_API_TOKEN=redreplier_your_key redreplier-mcp
+```
+
 ## Links
 
 - [RedReplier](https://redreplier.com)
 - [API Tokens](https://redreplier.com/api-tokens)
-- [MCP Server](https://github.com/redreplier/mcp-server)
+- [MCP Server](./mcp-server)
 
 ## License
 

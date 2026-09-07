@@ -1,0 +1,55 @@
+{
+  "name": "@redreplier/mcp-server",
+  "version": "1.0.0",
+  "description": "RedReplier MCP Server — AI agent integration for Reddit, Hacker News, X, and Bluesky keyword monitoring, lead mentions, and alerts",
+  "homepage": "https://redreplier.com",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/RedReplier/agent.git",
+    "directory": "mcp-server"
+  },
+  "bugs": {
+    "url": "https://github.com/RedReplier/agent/issues"
+  },
+  "author": "RedReplier <contact@redreplier.com> (https://redreplier.com)",
+  "license": "MIT",
+  "type": "module",
+  "bin": {
+    "redreplier-mcp": "./src/index.ts"
+  },
+  "main": "./src/index.ts",
+  "files": [
+    "src",
+    "README.md"
+  ],
+  "scripts": {
+    "dev": "bun run --watch src/index.ts",
+    "start": "bun run src/index.ts",
+    "check-types": "tsc --noEmit",
+    "lint": "eslint src/"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.12.1",
+    "jose": "^6.2.10",
+    "zod": "^3.25.67"
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "typescript": "5.9.3"
+  },
+  "keywords": [
+    "mcp",
+    "redreplier",
+    "reddit",
+    "hacker-news",
+    "twitter",
+    "bluesky",
+    "monitoring",
+    "social-listening",
+    "leads",
+    "ai-agent",
+    "claude",
+    "cursor",
+    "windsurf"
+  ]
+}
