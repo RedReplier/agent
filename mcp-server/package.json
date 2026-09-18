@@ -5,11 +5,10 @@
   "homepage": "https://redreplier.com",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/RedReplier/agent.git",
-    "directory": "mcp-server"
+    "url": "git+https://github.com/RedReplier/redreplier-mcp.git"
   },
   "bugs": {
-    "url": "https://github.com/RedReplier/agent/issues"
+    "url": "https://github.com/RedReplier/redreplier-mcp/issues"
   },
   "author": "RedReplier <contact@redreplier.com> (https://redreplier.com)",
   "license": "MIT",

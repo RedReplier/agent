@@ -8,9 +8,32 @@ RedReplier watches Reddit, Hacker News, X, and Bluesky for mentions of your keyw
 
 ## Quick Start
 
-### One-link setup (hosted)
+### Hosted server (no install)
 
-Connect with a single URL — no local install needed:
+Point your MCP client at the URL and sign in when the browser opens. No API key to paste.
+
+One-liner for Claude Code:
+
+```bash
+claude mcp add --transport http redreplier https://mcp.redreplier.com/mcp
+```
+
+Full config for any MCP client (Claude Desktop, Cursor, ChatGPT, Windsurf):
+
+```json
+{
+  "mcpServers": {
+    "redreplier": {
+      "type": "http",
+      "url": "https://mcp.redreplier.com/mcp"
+    }
+  }
+}
+```
+
+The server answers unauthenticated requests with a 401 and a `WWW-Authenticate` header, so OAuth-capable clients open the RedReplier sign-in on their own.
+
+Prefer a key? Headless agents and clients without OAuth can send a token from [redreplier.com/api-tokens](https://redreplier.com/api-tokens) instead:
 
 ```json
 {
@@ -36,7 +59,7 @@ npx skills add redreplier/agent
 
 | Variable | Required | Description |
 |---|---|---|
-| `REDREPLIER_API_TOKEN` | Yes | API token from [redreplier.com/api-tokens](https://redreplier.com/api-tokens) |
+| `REDREPLIER_API_TOKEN` | For stdio | API token from [redreplier.com/api-tokens](https://redreplier.com/api-tokens). The hosted HTTP server takes it per request instead. |
 | `REDREPLIER_API_URL` | No | Custom API base URL (defaults to production) |
 
 ## Available Tools
@@ -52,10 +75,9 @@ npx skills add redreplier/agent
 | `add_keywords` | Add keywords to a website (auto-activates within plan) |
 | `edit_keyword` | Change a keyword's text (re-graded) |
 | `disable_keyword` | Stop monitoring a keyword |
-| `enable_keyword` | Re-activate a disabled keyword |
-| `delete_keyword` | Delete a PENDING keyword |
-| `activate_pending_keywords` | Activate pending keywords (may charge an upgrade) |
-| `preview_activate_pending` | Preview the cost of activating pending keywords |
+| `enable_keyword` | Re-activate a disabled keyword (stays pending if the plan is full; never charges) |
+| `delete_keyword` | Delete a keyword and every mention it produced |
+| `preview_activate_pending` | Preview what a plan upgrade covering pending keywords would cost |
 | `preview_keyword_billing` | Preview plan/price for N active keywords |
 | `keyword_change_usage` | Monthly keyword-edit allowance and usage |
 | `list_mentions` | List AI-scored mentions with rich filters |

@@ -128,7 +128,7 @@ function createMcpServer(apiClient?: RestClient): McpServer {
     {
       title: 'Get Monitored Website',
       description:
-        'Get one monitored website by ID with its full keyword list and statuses (PENDING, ACTIVE, DISABLED, SUSPENDED). Use it to re-check keyword statuses after add_keywords, enable_keyword, or activate_pending_keywords; use list_websites instead when you do not have the ID yet or want every site. websiteId comes from list_websites or create_website. Returns 404 when the website does not exist or belongs to another account, and 400 when websiteId is not a UUID.',
+        'Get one monitored website by ID with its full keyword list and statuses (PENDING, ACTIVE, DISABLED, SUSPENDED). Use it to re-check keyword statuses after add_keywords or enable_keyword; use list_websites instead when you do not have the ID yet or want every site. websiteId comes from list_websites or create_website. Returns 404 when the website does not exist or belongs to another account, and 400 when websiteId is not a UUID.',
       inputSchema: {
         websiteId: z.string().describe('Monitored website ID (UUID) from list_websites'),
       },
@@ -155,7 +155,7 @@ function createMcpServer(apiClient?: RestClient): McpServer {
     {
       title: 'Add Website to Monitor',
       description:
-        'Add a website to monitor across Reddit, Hacker News, X, and Bluesky. The domain must be new to this account: a duplicate returns 400, and re-adding a domain removed with delete_website revives that record. description is the context every mention is scored against. Omit it and the server scrapes the URL to write one, spending one AI generation from the plan quota; if that scrape fails or the quota is exhausted the site is created with description null and its mentions go unscored (reason "Scoring skipped: website description missing"), so check the response and set one with update_website or analyze_website. Pass your own description to skip the scrape. Initial keywords are stored PENDING: list_websites or add_keywords promotes those that fit the plan for free, and activate_pending_keywords covers the rest, possibly for a charge. AI-suggested keywords are added in the background and show up on the website later. Returns 400 when the plan has no website slots left.',
+        'Add a website to monitor across Reddit, Hacker News, X, and Bluesky. The domain must be new to this account: a duplicate returns 400, and re-adding a domain removed with delete_website revives that record. description is the context every mention is scored against. Omit it and the server scrapes the URL to write one, spending one AI generation from the plan quota; if that scrape fails or the quota is exhausted the site is created with description null and its mentions go unscored (reason "Scoring skipped: website description missing"), so check the response and set one with update_website or analyze_website. Pass your own description to skip the scrape. Initial keywords are stored PENDING: list_websites or add_keywords promotes those that fit the plan; the rest stay PENDING until the plan is upgraded in the RedReplier app. AI-suggested keywords are added in the background and show up on the website later. Returns 400 when the plan has no website slots left.',
       inputSchema: {
         url: z.string().describe('Full website URL (e.g. "https://example.com")'),
         name: z.string().optional().describe('Display name for the website'),
@@ -229,7 +229,7 @@ function createMcpServer(apiClient?: RestClient): McpServer {
     {
       title: 'Stop Monitoring Website',
       description:
-        'Stop monitoring a website (soft delete). The site and its keywords leave list_websites immediately and stop matching new mentions; there is no restore tool, but create_website with the same URL revives the record. Use this only when the whole site should go: use disable_keyword to pause one keyword and keep the site, and delete_keyword for a PENDING keyword you never want. Confirm with the user first and name the domain, not just the ID. Returns { deleted: true }; 404 if the ID is unknown to this account.',
+        'Stop monitoring a website (soft delete). The site and its keywords leave list_websites immediately and stop matching new mentions; there is no restore tool, but create_website with the same URL revives the record. Use this only when the whole site should go: use disable_keyword to pause one keyword and keep the site, and delete_keyword to erase one keyword and its mentions. Confirm with the user first and name the domain, not just the ID. Returns { deleted: true }; 404 if the ID is unknown to this account.',
       inputSchema: {
         websiteId: z.string().describe('Monitored website ID (UUID)'),
       },
@@ -285,7 +285,7 @@ function createMcpServer(apiClient?: RestClient): McpServer {
     {
       title: 'Add Keywords',
       description:
-        "Add keywords to a monitored website. Values are trimmed, lowercased, and de-duplicated; ones already ACTIVE on that site are skipped, and re-adding a DISABLED one resets it to PENDING (prefer enable_keyword). Each new keyword starts PENDING, then as many as fit the plan's free headroom flip to ACTIVE at once, with no charge. The rest stay PENDING and match nothing until activate_pending_keywords, which may charge an upgrade; run preview_activate_pending first. Adding is unlimited. Use edit_keyword to reword an existing keyword. Returns the whole website with its updated keyword list, not only the new keywords.",
+        "Add keywords to a monitored website. Values are trimmed, lowercased, and de-duplicated; ones already ACTIVE on that site are skipped, and re-adding a DISABLED one resets it to PENDING (prefer enable_keyword). Each new keyword starts PENDING, then as many as fit the plan's free headroom flip to ACTIVE at once, with no charge. The rest stay PENDING and match nothing until the plan is upgraded in the RedReplier app; preview_activate_pending shows what that upgrade costs. Adding is unlimited. Use edit_keyword to reword an existing keyword. Returns the whole website with its updated keyword list, not only the new keywords.",
       inputSchema: {
         websiteId: z.string().describe('Monitored website ID (UUID)'),
         keywords: z
@@ -351,7 +351,7 @@ function createMcpServer(apiClient?: RestClient): McpServer {
     {
       title: 'Disable Keyword',
       description:
-        'Stop monitoring one keyword: sets it DISABLED and it stops matching new mentions immediately. Unlimited and reversible with enable_keyword. Billing does not drop right away: the keyword keeps its paid slot until the end of the current billing cycle, so re-enabling it in the same cycle is free but a new keyword cannot reuse that slot for free; any price reduction is scheduled for the cycle boundary. Use delete_keyword instead for a PENDING keyword you never want. Calling it on an already DISABLED keyword returns it unchanged.',
+        'Stop monitoring one keyword: sets it DISABLED and it stops matching new mentions immediately. Unlimited and reversible with enable_keyword. Billing does not drop right away: the keyword keeps its paid slot until the end of the current billing cycle, so re-enabling it in the same cycle is free but a new keyword cannot reuse that slot for free; any price reduction is scheduled for the cycle boundary. Use delete_keyword instead to erase the keyword and every mention it produced. Calling it on an already DISABLED keyword returns it unchanged.',
       inputSchema: {
         keywordId: z.string().describe('Keyword ID (UUID)'),
       },
@@ -376,12 +376,12 @@ function createMcpServer(apiClient?: RestClient): McpServer {
     {
       title: 'Enable Keyword',
       description:
-        'Re-activate one DISABLED keyword. It goes ACTIVE at once when it fits the plan or was disabled earlier in this billing cycle (it still holds its slot). Otherwise it is set PENDING and the required plan upgrade is charged immediately; it flips ACTIVE once the payment settles, so re-check with get_website. Use activate_pending_keywords instead to bring every PENDING keyword live in one call, and add_keywords for a keyword that does not exist yet. Preview cost with preview_keyword_billing first. Returns 400 without an active subscription; an ACTIVE keyword is returned unchanged.',
+        'Re-activate one DISABLED keyword. It goes ACTIVE at once when it fits the plan or was disabled earlier in this billing cycle (it still holds its slot). Otherwise it is set PENDING and goes ACTIVE once the plan is upgraded in the RedReplier app; this tool never charges. Use add_keywords for a keyword that does not exist yet, and preview_keyword_billing to see what the upgrade costs. Returns 400 without an active subscription; an ACTIVE keyword is returned unchanged.',
       inputSchema: {
         keywordId: z.string().describe('Keyword ID (UUID)'),
       },
       outputSchema: resultSchema(
-        'The keyword with status ACTIVE, or PENDING when an upgrade was charged and its payment has not settled yet.',
+        'The keyword with status ACTIVE, or PENDING when the plan has no free slot for it.',
       ),
       annotations: {
         readOnlyHint: false,
@@ -403,11 +403,11 @@ function createMcpServer(apiClient?: RestClient): McpServer {
     {
       title: 'Delete Keyword',
       description:
-        'Permanently delete one keyword. Only PENDING keywords qualify (never billed, never live), so there is no billing effect and no undo. Any other status returns 400 "Only pending keywords can be removed": use disable_keyword for an ACTIVE keyword, edit_keyword to fix a SUSPENDED one, and delete_website to drop a whole site. Prefer this over leaving unwanted PENDING keywords in place, because activate_pending_keywords would otherwise try to pay for them. Returns { deleted: true }.',
+        'Permanently delete one keyword in any status, together with every mention it produced. There is no undo and no restore: disable_keyword pauses a keyword and keeps its mentions, edit_keyword fixes a SUSPENDED value, and delete_website drops a whole site. Deleting an ACTIVE keyword frees its paid slot the same way disabling does, with no refund. Confirm with the user first and name the keyword, not just the ID. Returns { deleted: true }; 404 if the ID is unknown to this account.',
       inputSchema: {
         keywordId: z.string().describe('Keyword ID (UUID)'),
       },
-      outputSchema: resultSchema('{ deleted: true } once the PENDING keyword is removed.'),
+      outputSchema: resultSchema('{ deleted: true } once the keyword and its mentions are removed.'),
       annotations: {
         readOnlyHint: false,
         destructiveHint: true,
@@ -424,36 +424,11 @@ function createMcpServer(apiClient?: RestClient): McpServer {
   );
 
   server.registerTool(
-    'activate_pending_keywords',
-    {
-      title: 'Activate Pending Keywords',
-      description:
-        'Activate every PENDING keyword across the account in two steps: promote as many as the current plan covers for free, then charge an immediate prorated upgrade to cover the remainder (keywords disabled this cycle still hold slots and count). Keywords covered by the upgrade stay PENDING in the response and flip ACTIVE once the payment settles; re-check with list_websites. Always call preview_activate_pending first, show the user immediateCharge and targetPlanName, and get explicit consent; never call this in a loop. Use enable_keyword for a single DISABLED keyword. Fails with 400 when there is no active subscription or the charge fails, leaving keywords PENDING. Returns the updated websites.',
-      inputSchema: {},
-      outputSchema: resultSchema(
-        'All websites with their keyword statuses; keywords waiting on an upgrade payment still show PENDING.',
-      ),
-      annotations: {
-        readOnlyHint: false,
-        destructiveHint: false,
-        openWorldHint: false,
-      },
-    },
-    async () => {
-      try {
-        return toolResult(await client.post('/keywords/activate-pending'));
-      } catch (error) {
-        return toolError(error);
-      }
-    },
-  );
-
-  server.registerTool(
     'preview_activate_pending',
     {
       title: 'Preview Pending Keyword Activation',
       description:
-        'Preview the billing impact of activate_pending_keywords without changing anything. Takes no input: it prices the plan needed for the keywords committed this cycle (ACTIVE plus disabled this cycle) plus every PENDING keyword. Returns currentPlanName, currentMonthlyPrice, targetPlanName, targetMonthlyPrice, targetKeywords, immediateCharge (prorated amount charged now), isUpgrade, isDowngrade, requiresImmediatePayment; immediateCharge 0 with isUpgrade false means activation is free. Use this right before activate_pending_keywords. Use preview_keyword_billing instead to price an arbitrary keyword count, for example before add_keywords or enable_keyword.',
+        'Preview what upgrading the plan to cover every PENDING keyword would cost, without changing anything. Takes no input: it prices the plan needed for the keywords committed this cycle (ACTIVE plus disabled this cycle) plus every PENDING keyword. Returns currentPlanName, currentMonthlyPrice, targetPlanName, targetMonthlyPrice, targetKeywords, immediateCharge (prorated amount the upgrade would cost now), isUpgrade, isDowngrade, requiresImmediatePayment; immediateCharge 0 with isUpgrade false means the current plan already covers them. The upgrade itself happens in the RedReplier app. Use preview_keyword_billing instead to price an arbitrary keyword count, for example before add_keywords or enable_keyword.',
       inputSchema: {},
       outputSchema: resultSchema(
         'Billing preview: currentPlanName, currentMonthlyPrice, targetPlanName, targetMonthlyPrice, targetKeywords, immediateCharge, isUpgrade, isDowngrade, requiresImmediatePayment.',
