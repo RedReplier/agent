@@ -3,9 +3,9 @@ name: redreplier
 description: >
   Monitor Reddit, Hacker News, X, and Bluesky for keyword mentions of your product/website via the
   RedReplier API. Covers managing monitored websites, keyword lifecycle (add/edit/disable/enable/activate
-  with plan billing), triaging AI-scored lead mentions (approve/reject, relevance reasoning), and email
+  within the plan), triaging AI-scored lead mentions (approve/reject, relevance reasoning), and email
   alert settings.
-last-updated: 2026-09-07
+last-updated: 2026-09-11
 allowed-tools: Bash(./scripts/redreplier.js:*)
 ---
 
@@ -73,7 +73,7 @@ Get your API key at: https://redreplier.com/api-tokens
 
 1. **Websites** — you register the websites/products you want to track. The description is the context for AI relevance scoring: without one, a site's new mentions get no `relevanceScore`, so draft it with `websites:analyze` and set it.
 2. **Keywords** — each website has keywords. Keywords have a lifecycle: `PENDING` (proposed, not yet paid for, matches nothing) → `ACTIVE` (live, monitored) → `DISABLED` (stopped, slot held until the cycle ends). `SUSPENDED` means the grader rejected the keyword as too noisy — edit it to fix. Edits are unlimited.
-3. **Billing** — keyword capacity is tied to the plan. Adding keywords (and listing websites) auto-activates as many as fit for free; the rest stay `PENDING` until you `activate`, which charges a prorated upgrade for the remainder. Enabling one `DISABLED` keyword that no longer fits the plan charges the same way. Both have a preview command.
+3. **Billing** — keyword capacity is tied to the plan. Adding keywords (and listing websites) auto-activates as many as fit for free; the rest stay `PENDING` until the plan is upgraded in the RedReplier app. Nothing here ever charges. The preview commands show what that upgrade would cost.
 4. **Mentions** — matched posts and comments across Reddit, Hacker News, X, and Bluesky, each AI-scored 0-100 for relevance, with a reason, tags, and a drafted reply on demand. You triage them: `APPROVED` (real lead) / `REJECTED` (noise) / `NEW` (inbox). Triage is reversible.
 5. **Alerts** — optional email digests on a cadence (15 / 30 / 60 / 120 / 180 / 240 / 720 / 1440 minutes), clamped up to what the plan allows.
 
@@ -88,13 +88,13 @@ Get your API key at: https://redreplier.com/api-tokens
 | `./scripts/redreplier.js websites:update --id <id> [--name ..] [--description ..]` | Update name and/or description; omitted fields are kept. The description is the scoring context |
 | `./scripts/redreplier.js websites:delete --id <id>` | Stop monitoring a website (soft delete, no restore command; re-creating the URL revives it). Confirm with the user first |
 | `./scripts/redreplier.js websites:analyze --url <url>` | Scrape a URL and AI-generate a description without creating anything (uses one AI generation) |
-| `./scripts/redreplier.js keywords:add --website <id> --keywords a,b` | Add keywords (unlimited). Those that fit the plan go ACTIVE for free; the rest stay PENDING until `keywords:activate`. Returns the whole website |
+| `./scripts/redreplier.js keywords:add --website <id> --keywords a,b` | Add keywords (unlimited). Those that fit the plan go ACTIVE for free; the rest stay PENDING until the plan is upgraded in the app. Returns the whole website |
 | `./scripts/redreplier.js keywords:edit --id <id> --value "new"` | Reword a keyword in place (unlimited, re-graded, keeps its slot). Use it to fix a SUSPENDED keyword instead of adding a variant |
 | `./scripts/redreplier.js keywords:disable --id <id>` | Stop one keyword immediately (unlimited, reversible). Its paid slot is held until the cycle ends |
-| `./scripts/redreplier.js keywords:enable --id <id>` | Re-enable one DISABLED keyword. Free if it fits the plan or was disabled this cycle; otherwise charges an upgrade immediately and stays PENDING until payment settles |
+| `./scripts/redreplier.js keywords:enable --id <id>` | Re-enable one DISABLED keyword. ACTIVE if it fits the plan or was disabled this cycle; otherwise stays PENDING until the plan is upgraded in the app. Never charges |
 | `./scripts/redreplier.js keywords:delete --id <id>` | Permanently delete a PENDING keyword (any other status is rejected). No billing effect |
-| `./scripts/redreplier.js keywords:activate` | Activate every PENDING keyword: free within the plan, then charges a prorated upgrade for the rest. Run `keywords:activate-preview` first and confirm |
-| `./scripts/redreplier.js keywords:activate-preview` | Price activating everything currently PENDING, no changes (`immediateCharge`, `targetPlanName`) |
+| `./scripts/redreplier.js keywords:activate` | Activate PENDING keywords up to the free slots on the plan. Never charges; the rest stay PENDING |
+| `./scripts/redreplier.js keywords:activate-preview` | Price a plan upgrade covering everything currently PENDING, no changes (`immediateCharge`, `targetPlanName`) |
 | `./scripts/redreplier.js keywords:billing-preview --count <n>` | Price an absolute total of N active keywords, no changes. Use before `keywords:add` or `keywords:enable` |
 | `./scripts/redreplier.js keywords:usage` | Keyword-edit allowance; every plan currently reports unlimited (`limit: -1`) |
 | `./scripts/redreplier.js mentions [filters]` | List AI-scored mentions. By default REJECTED and below-threshold (score < 30) mentions are hidden |
@@ -129,10 +129,10 @@ Keywords created with a website start `PENDING`. `description` is the scoring co
 POST   /api/v1/websites/{id}/keywords          # { keywords: string[] }  (auto-activates within plan; returns the website)
 PATCH  /api/v1/keywords/{id}                    # { value }              (re-graded; unlimited; keeps its slot)
 POST   /api/v1/keywords/{id}/disable            # -> DISABLED (slot held until cycle end)
-POST   /api/v1/keywords/{id}/enable             # -> ACTIVE, or PENDING + upgrade charged immediately
+POST   /api/v1/keywords/{id}/enable             # -> ACTIVE, or PENDING when the plan is full (never charges)
 DELETE /api/v1/keywords/{id}                    # only PENDING keywords; permanent
-POST   /api/v1/keywords/activate-pending        # free within plan, then charges upgrade; paid ones flip ACTIVE after payment
-GET    /api/v1/keywords/activate-pending/preview # cost of activating what is PENDING now
+POST   /api/v1/keywords/activate-pending        # activates within the plan's free slots only (never charges)
+GET    /api/v1/keywords/activate-pending/preview # cost of an upgrade covering what is PENDING now
 GET    /api/v1/keywords/billing-preview?desiredKeywordCount=N   # N = absolute active total wanted
 GET    /api/v1/keywords/change-usage            # { limit, used, remaining, unlimited }; always unlimited today
 ```
@@ -181,8 +181,8 @@ RedReplier has a native MCP server. For Claude Desktop, Cursor, or any MCP-compa
 
 ## Automation Guidelines
 
-- **Triage is reversible; billing is not.** Approving/rejecting mentions is safe and reversible. Activating pending keywords (`keywords:activate`) can trigger a **paid plan upgrade** — always run `keywords:activate-preview` first and confirm the charge with the user before activating. `keywords:enable` on a keyword that no longer fits the plan charges the same way; run `keywords:billing-preview` first.
-- **One keyword vs. all pending.** `keywords:enable` brings back one `DISABLED` keyword; `keywords:activate` brings every `PENDING` keyword live at once. Never run either in a loop.
+- **No command charges.** Approving/rejecting mentions is safe and reversible. Keywords beyond the plan stay `PENDING`; plan upgrades happen only in the RedReplier app.
+- **One keyword vs. all pending.** `keywords:enable` brings back one `DISABLED` keyword; `keywords:activate` brings every `PENDING` keyword live at once.
 - **Confirm before deleting websites.** `websites:delete` stops all monitoring for that site and there is no restore command.
 - **Edits are unlimited.** `keywords:edit` re-grades the new value and keeps the keyword's slot; `keywords:usage` reports `limit: -1` on every plan. Prefer editing over adding a near-duplicate, and disabling over deleting (only `PENDING` keywords can be deleted).
 - **Respect the grader.** A `SUSPENDED` keyword was judged too noisy — fix it with `keywords:edit`, don't try to force it active.
