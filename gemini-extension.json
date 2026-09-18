@@ -1,0 +1,15 @@
+{
+  "name": "redreplier",
+  "version": "1.0.0",
+  "description": "Monitor Reddit, Hacker News, X and Bluesky for keywords from Gemini CLI",
+  "contextFileName": "GEMINI.md",
+  "mcpServers": {
+    "redreplier": {
+      "httpUrl": "https://mcp.redreplier.com/mcp",
+      "oauth": {
+        "enabled": true
+      },
+      "timeout": 30000
+    }
+  }
+}
