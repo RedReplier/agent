@@ -103,15 +103,15 @@ function createMcpServer(apiClient?: RestClient): McpServer {
     {
       title: 'List Monitored Websites',
       description:
-        "List every website this account monitors, each with its keywords (id, value, status: PENDING, ACTIVE, DISABLED, SUSPENDED). Call this first: most other tools need a websiteId or keywordId from it. Reading also promotes any PENDING keyword that fits the plan's free headroom to ACTIVE, without ever charging. Use get_website instead when you already hold a websiteId and want one record. Only ACTIVE keywords match new mentions, so a long PENDING list explains a quiet inbox. Scope is the account behind the API token.",
+        'List monitored websites and keyword statuses in the connected workspace. This also activates pending keywords that fit the existing plan, updates monitoring alerts, and queues public-network searches and ranking checks; it never charges. Use get_website to read one known website without activating keywords. Website and keyword IDs from this response are used by the other tools.',
       inputSchema: {},
       outputSchema: resultSchema(
-        'Array of monitored websites, each with its ID, URL, name, description, and keywords with their statuses.',
+        'Object with websites: monitored websites with IDs, URLs, names, descriptions and keyword statuses.',
       ),
       annotations: {
-        readOnlyHint: true,
+        readOnlyHint: false,
         destructiveHint: false,
-        openWorldHint: false,
+        openWorldHint: true,
       },
     },
     async () => {
@@ -155,7 +155,7 @@ function createMcpServer(apiClient?: RestClient): McpServer {
     {
       title: 'Add Website to Monitor',
       description:
-        'Add a website to monitor across Reddit, Hacker News, X, and Bluesky. The domain must be new to this account: a duplicate returns 400, and re-adding a domain removed with delete_website revives that record. description is the context every mention is scored against. Omit it and the server scrapes the URL to write one, spending one AI generation from the plan quota; if that scrape fails or the quota is exhausted the site is created with description null and its mentions go unscored (reason "Scoring skipped: website description missing"), so check the response and set one with update_website or analyze_website. Pass your own description to skip the scrape. Initial keywords are stored PENDING: list_websites or add_keywords promotes those that fit the plan; the rest stay PENDING until the plan is upgraded in the RedReplier app. AI-suggested keywords are added in the background and show up on the website later. Returns 400 when the plan has no website slots left.',
+        'Add a website to monitor across Reddit, Hacker News, X, and Bluesky. The domain must be new to this account: a duplicate returns 400, and re-adding a domain removed with delete_website revives that record. description is the context every mention is scored against. Omit it and the server scrapes the URL to write one, spending one AI generation from the plan quota; if that scrape fails or the quota is exhausted the site is created with description null and its mentions go unscored (reason "Scoring skipped: website description missing"), so check the response and set one with update_website or analyze_website. Pass your own description to skip the scrape. Initial keywords are stored PENDING: list_websites or add_keywords promotes those that fit the plan; the rest stay PENDING when the current entitlement has no capacity. AI-suggested keywords are added in the background and show up on the website later. Returns 400 when the plan has no website slots left.',
       inputSchema: {
         url: z.string().describe('Full website URL (e.g. "https://example.com")'),
         name: z.string().optional().describe('Display name for the website'),
@@ -285,7 +285,7 @@ function createMcpServer(apiClient?: RestClient): McpServer {
     {
       title: 'Add Keywords',
       description:
-        "Add keywords to a monitored website. Values are trimmed, lowercased, and de-duplicated; ones already ACTIVE on that site are skipped, and re-adding a DISABLED one resets it to PENDING (prefer enable_keyword). Each new keyword starts PENDING, then as many as fit the plan's free headroom flip to ACTIVE at once, with no charge. The rest stay PENDING and match nothing until the plan is upgraded in the RedReplier app; preview_activate_pending shows what that upgrade costs. Adding is unlimited. Use edit_keyword to reword an existing keyword. Returns the whole website with its updated keyword list, not only the new keywords.",
+        'Add keywords to a monitored website. Values are trimmed, lowercased and deduplicated; active values are skipped and disabled values may be proposed again. New keywords start pending, then those within the existing plan become active without a charge. Activation updates monitoring alerts and queues public-network searches and ranking checks. Keywords beyond the current entitlement stay pending. Returns the whole website with its updated keyword list. Use edit_keyword to change existing text.',
       inputSchema: {
         websiteId: z.string().describe('Monitored website ID (UUID)'),
         keywords: z
@@ -301,7 +301,7 @@ function createMcpServer(apiClient?: RestClient): McpServer {
       annotations: {
         readOnlyHint: false,
         destructiveHint: false,
-        openWorldHint: false,
+        openWorldHint: true,
       },
     },
     async ({ websiteId, keywords }) => {
@@ -320,7 +320,7 @@ function createMcpServer(apiClient?: RestClient): McpServer {
     {
       title: 'Edit Keyword',
       description:
-        "Change a keyword's text in place, keeping its ID and any paid slot. Edits are unlimited on every plan (keyword_change_usage reports limit -1). The new value is re-graded for noise; an ACTIVE keyword stays ACTIVE, while a PENDING, DISABLED, or SUSPENDED one goes ACTIVE if the plan has a free slot and PENDING otherwise. Use this to fix a SUSPENDED keyword the grader rejected, or to reword instead of adding a variant with add_keywords. A case-only change is a no-op; a value already on the website returns 400.",
+        "Replace a keyword's text while keeping its ID. Edits are unlimited. The new value is re-graded and replaces its matching rules; an active keyword stays active, while other keywords become active only if the current plan has space. Activating a suspended keyword also queues public-network searches and ranking checks. Monitoring alerts are synchronized. Case-only changes are a no-op; duplicate values on the same website fail. Previous text and matching rules are overwritten.",
       inputSchema: {
         keywordId: z.string().describe('Keyword ID (UUID)'),
         value: z
@@ -334,7 +334,7 @@ function createMcpServer(apiClient?: RestClient): McpServer {
       annotations: {
         readOnlyHint: false,
         destructiveHint: true,
-        openWorldHint: false,
+        openWorldHint: true,
       },
     },
     async ({ keywordId, value }) => {
@@ -351,11 +351,11 @@ function createMcpServer(apiClient?: RestClient): McpServer {
     {
       title: 'Disable Keyword',
       description:
-        'Stop monitoring one keyword: sets it DISABLED and it stops matching new mentions immediately. Unlimited and reversible with enable_keyword. Billing does not drop right away: the keyword keeps its paid slot until the end of the current billing cycle, so re-enabling it in the same cycle is free but a new keyword cannot reuse that slot for free; any price reduction is scheduled for the cycle boundary. Use delete_keyword instead to erase the keyword and every mention it produced. Calling it on an already DISABLED keyword returns it unchanged.',
+        'Set one keyword to DISABLED and stop matching new mentions. Keeps its stored mentions and synchronizes monitoring alerts. Use enable_keyword to resume monitoring within the current entitlement, or delete_keyword to permanently erase the keyword and its mentions. An already disabled keyword is returned unchanged. This tool does not charge, refund, or change the subscription.',
       inputSchema: {
         keywordId: z.string().describe('Keyword ID (UUID)'),
       },
-      outputSchema: resultSchema('The keyword with status DISABLED; its paid slot is held until the billing cycle ends.'),
+      outputSchema: resultSchema('The keyword with status DISABLED; existing mentions are retained.'),
       annotations: {
         readOnlyHint: false,
         destructiveHint: true,
@@ -376,7 +376,7 @@ function createMcpServer(apiClient?: RestClient): McpServer {
     {
       title: 'Enable Keyword',
       description:
-        'Re-activate one DISABLED keyword. It goes ACTIVE at once when it fits the plan or was disabled earlier in this billing cycle (it still holds its slot). Otherwise it is set PENDING and goes ACTIVE once the plan is upgraded in the RedReplier app; this tool never charges. Use add_keywords for a keyword that does not exist yet, and preview_keyword_billing to see what the upgrade costs. Returns 400 without an active subscription; an ACTIVE keyword is returned unchanged.',
+        'Enable an existing keyword within the current plan. It becomes ACTIVE if there is capacity, otherwise PENDING; this tool never charges or upgrades a subscription. An already active keyword is returned unchanged. Monitoring alerts are synchronized when activated. No historical backfill runs on re-enable; new matches arrive through monitoring. Use add_keywords for a new keyword.',
       inputSchema: {
         keywordId: z.string().describe('Keyword ID (UUID)'),
       },
@@ -403,7 +403,7 @@ function createMcpServer(apiClient?: RestClient): McpServer {
     {
       title: 'Delete Keyword',
       description:
-        'Permanently delete one keyword in any status, together with every mention it produced. There is no undo and no restore: disable_keyword pauses a keyword and keeps its mentions, edit_keyword fixes a SUSPENDED value, and delete_website drops a whole site. Deleting an ACTIVE keyword frees its paid slot the same way disabling does, with no refund. Confirm with the user first and name the keyword, not just the ID. Returns { deleted: true }; 404 if the ID is unknown to this account.',
+        'Permanently delete one keyword in any status, together with every mention it produced. There is no undo and no restore: disable_keyword pauses a keyword and keeps its mentions, edit_keyword fixes a SUSPENDED value, and delete_website drops a whole site. Deleting an active keyword removes it from the active keyword count; this tool does not issue a refund or change the subscription. Confirm with the user first and name the keyword, not just the ID. Returns { deleted: true }; 404 if the ID is unknown to this account.',
       inputSchema: {
         keywordId: z.string().describe('Keyword ID (UUID)'),
       },
@@ -424,71 +424,11 @@ function createMcpServer(apiClient?: RestClient): McpServer {
   );
 
   server.registerTool(
-    'preview_activate_pending',
-    {
-      title: 'Preview Pending Keyword Activation',
-      description:
-        'Preview what upgrading the plan to cover every PENDING keyword would cost, without changing anything. Takes no input: it prices the plan needed for the keywords committed this cycle (ACTIVE plus disabled this cycle) plus every PENDING keyword. Returns currentPlanName, currentMonthlyPrice, targetPlanName, targetMonthlyPrice, targetKeywords, immediateCharge (prorated amount the upgrade would cost now), isUpgrade, isDowngrade, requiresImmediatePayment; immediateCharge 0 with isUpgrade false means the current plan already covers them. The upgrade itself happens in the RedReplier app. Use preview_keyword_billing instead to price an arbitrary keyword count, for example before add_keywords or enable_keyword.',
-      inputSchema: {},
-      outputSchema: resultSchema(
-        'Billing preview: currentPlanName, currentMonthlyPrice, targetPlanName, targetMonthlyPrice, targetKeywords, immediateCharge, isUpgrade, isDowngrade, requiresImmediatePayment.',
-      ),
-      annotations: {
-        readOnlyHint: true,
-        destructiveHint: false,
-        openWorldHint: false,
-      },
-    },
-    async () => {
-      try {
-        return toolResult(await client.get('/keywords/activate-pending/preview'));
-      } catch (error) {
-        return toolError(error);
-      }
-    },
-  );
-
-  server.registerTool(
-    'preview_keyword_billing',
-    {
-      title: 'Preview Keyword Billing',
-      description:
-        'Preview the plan and price needed for a chosen total of active keywords, without changing anything. desiredKeywordCount is the absolute number of keywords you want live across the account, not the number being added: count the ACTIVE keywords from list_websites and add the new ones. Returns the same shape as preview_activate_pending (currentPlanName, targetPlanName, targetMonthlyPrice, immediateCharge, isUpgrade, isDowngrade, requiresImmediatePayment). Use this for what-if pricing before add_keywords or enable_keyword; use preview_activate_pending instead for the exact cost of activating the keywords already PENDING, which it counts for you.',
-      inputSchema: {
-        desiredKeywordCount: z
-          .number()
-          .int()
-          .min(0)
-          .describe(
-            'Total ACTIVE keywords wanted across the account after the change (absolute count, not an increment)',
-          ),
-      },
-      outputSchema: resultSchema(
-        'Billing preview for that keyword count, same shape as preview_activate_pending: target plan, monthly price, prorated immediateCharge, isUpgrade, isDowngrade.',
-      ),
-      annotations: {
-        readOnlyHint: true,
-        destructiveHint: false,
-        openWorldHint: false,
-      },
-    },
-    async ({ desiredKeywordCount }) => {
-      try {
-        return toolResult(
-          await client.get('/keywords/billing-preview', { desiredKeywordCount }),
-        );
-      } catch (error) {
-        return toolError(error);
-      }
-    },
-  );
-
-  server.registerTool(
     'keyword_change_usage',
     {
       title: 'Get Keyword Edit Allowance',
       description:
-        'Get the monthly keyword-edit allowance for the account as { limit, used, remaining, unlimited }, where limit -1 means unlimited. Only edit_keyword ever counted toward it; add_keywords, disable_keyword, and enable_keyword never did. Every current plan reports unlimited, so there is no need to check it before edit_keyword; it remains for clients that budget edits. Not a capacity or billing preview: use preview_keyword_billing or preview_activate_pending for plan pricing, and list_websites to count ACTIVE keywords.',
+        'Get the monthly keyword-edit allowance for the account as { limit, used, remaining, unlimited }, where limit -1 means unlimited. Only edit_keyword ever counted toward it; add_keywords, disable_keyword, and enable_keyword never did. Every current plan reports unlimited, so there is no need to check it before edit_keyword; it remains for clients that budget edits. This reports editing allowance only; it does not change keyword capacity, sell a plan, or initiate payment.',
       inputSchema: {},
       outputSchema: resultSchema(
         '{ limit, used, remaining, unlimited }; limit -1 and unlimited true mean edits are not metered.',

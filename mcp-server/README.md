@@ -77,8 +77,6 @@ npx skills add redreplier/agent
 | `disable_keyword` | Stop monitoring a keyword |
 | `enable_keyword` | Re-activate a disabled keyword (stays pending if the plan is full; never charges) |
 | `delete_keyword` | Delete a keyword and every mention it produced |
-| `preview_activate_pending` | Preview what a plan upgrade covering pending keywords would cost |
-| `preview_keyword_billing` | Preview plan/price for N active keywords |
 | `keyword_change_usage` | Monthly keyword-edit allowance and usage |
 | `list_mentions` | List AI-scored mentions with rich filters |
 | `count_mentions` | Count mentions matching filters |

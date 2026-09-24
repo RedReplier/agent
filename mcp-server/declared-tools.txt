@@ -9,8 +9,6 @@ edit_keyword
 disable_keyword
 enable_keyword
 delete_keyword
-preview_activate_pending
-preview_keyword_billing
 keyword_change_usage
 list_mentions
 count_mentions
