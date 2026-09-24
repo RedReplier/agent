@@ -179,7 +179,7 @@ function createMcpServer(apiClient?: RestClient): McpServer {
       annotations: {
         readOnlyHint: false,
         destructiveHint: false,
-        openWorldHint: false,
+        openWorldHint: true,
       },
     },
     async (input) => {
@@ -264,7 +264,7 @@ function createMcpServer(apiClient?: RestClient): McpServer {
       annotations: {
         readOnlyHint: false,
         destructiveHint: false,
-        openWorldHint: false,
+        openWorldHint: true,
       },
     },
     async ({ url }) => {
