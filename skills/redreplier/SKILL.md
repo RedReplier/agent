@@ -5,7 +5,7 @@ description: >
   RedReplier API. Covers managing monitored websites, keyword lifecycle (add/edit/disable/enable/activate
   within the plan), triaging AI-scored lead mentions (approve/reject, relevance reasoning), and email
   alert settings.
-last-updated: 2026-09-11
+last-updated: 2026-09-27
 allowed-tools: Bash(./scripts/redreplier.js:*)
 ---
 
@@ -104,7 +104,7 @@ Get your API key at: https://redreplier.com/api-tokens
 | `./scripts/redreplier.js alerts` | Get email-alert settings, including `minIntervalMinutes` and `availableCadences` |
 | `./scripts/redreplier.js alerts:update --enabled true --cadence 240` | Set alerts. Cadence: 15, 30, 60, 120, 180, 240, 720, 1440, clamped to the plan floor; omitting `--cadence` resets it to the fastest allowed |
 
-`mentions` / `mentions:count` filters: `--website <id>`, `--status NEW,APPROVED,REJECTED`, `--buckets VERY_LOW,LOW,MEDIUM,HIGH,VERY_HIGH`, `--keywords a,b`, `--sources REDDIT_POST,REDDIT_COMMENT,TWITTER,BLUESKY,HACKERNEWS`, `--sort RELEVANCE|RECENT`, `--include-low`, `--from <ISO>`, `--to <ISO>`, `--limit <1-500>`, `--offset <n>`. `--buckets LOW,VERY_LOW` only returns rows together with `--include-low`; `--from`/`--to` filter on ingestion time.
+`mentions` / `mentions:count` filters: `--website <id>`, `--status NEW,APPROVED,REJECTED`, `--buckets VERY_LOW,LOW,MEDIUM,HIGH,VERY_HIGH`, `--keywords a,b`, `--sources REDDIT_POST,REDDIT_COMMENT,TWITTER,BLUESKY,HACKERNEWS`, `--sort RELEVANCE|RECENT`, `--include-low`, `--min-score <0-100>`, `--from <ISO>`, `--to <ISO>`, `--limit <1-500>`, `--offset <n>`. `--buckets LOW,VERY_LOW` only returns rows together with `--include-low`; `--min-score 70` keeps mentions scoring 70 or more and drops unscored ones; `--from`/`--to` filter on ingestion time.
 
 ## API Reference
 
@@ -142,13 +142,13 @@ Keyword status values: `PENDING`, `ACTIVE`, `DISABLED`, `SUSPENDED`.
 ### Mentions
 
 ```
-GET   /api/v1/mentions?websiteId=&statuses=&scoreBuckets=&includeLowRelevance=&keywords=&sources=&sort=&from=&to=&limit=&offset=
+GET   /api/v1/mentions?websiteId=&statuses=&scoreBuckets=&includeLowRelevance=&minScore=&keywords=&sources=&sort=&from=&to=&limit=&offset=
 GET   /api/v1/mentions/count?<same filters>
 PATCH /api/v1/mentions/{id}/status              # { status: NEW | APPROVED | REJECTED }
 POST  /api/v1/mentions/{id}/explain             # lazily generates + returns relevance reason/tags
 ```
 
-Defaults: REJECTED mentions are excluded (unless `statuses` names them) and mentions below the website's minimum score (30 by default) are hidden unless `includeLowRelevance=true`; `scoreBuckets` does not lift that cutoff. `sort` is `RELEVANCE` (default) or `RECENT`. `limit` 1-500 (default 50). Relevance buckets: `VERY_LOW` (<10), `LOW` (10-29), `MEDIUM` (30-49), `HIGH` (50-74), `VERY_HIGH` (75+). Sources: `REDDIT_POST`, `REDDIT_COMMENT`, `TWITTER` (X), `BLUESKY`, `HACKERNEWS`.
+Defaults: REJECTED mentions are excluded (unless `statuses` names them) and mentions below the website's minimum score (30 by default) are hidden unless `includeLowRelevance=true`; `scoreBuckets` does not lift that cutoff, and neither does `minScore` (0-100), which only narrows the rows further and leaves out unscored mentions. `sort` is `RELEVANCE` (default) or `RECENT`. `limit` 1-500 (default 50). Relevance buckets: `VERY_LOW` (<10), `LOW` (10-29), `MEDIUM` (30-49), `HIGH` (50-74), `VERY_HIGH` (75+). Sources: `REDDIT_POST`, `REDDIT_COMMENT`, `TWITTER` (X), `BLUESKY`, `HACKERNEWS`.
 
 List returns `{ mentions: [...], total, limit, offset }`. Each mention: `id`, `websiteId`, `source`, `keyword`, `title`, `contentText`, `url`, `author`, `subreddit`, `status`, `relevanceScore`, `relevanceReason`, `aiReplySuggestion`, `tags`, `publishedAt`, `ingestedAt`, `reviewedAt`. `explain` fills in `relevanceReason`, `tags`, and `aiReplySuggestion` on first call and needs the website to have a description; it returns `null` for an unknown ID. `subreddit` is only set for Reddit sources (null for X, Bluesky, and Hacker News).
 

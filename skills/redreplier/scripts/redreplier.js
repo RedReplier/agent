@@ -299,6 +299,8 @@ const COMMANDS = {
     appendCsv(params, "sources", parsed.sources);
     if (parsed.sort) params.set("sort", parsed.sort);
     if (parsed["include-low"]) params.set("includeLowRelevance", "true");
+    if (parsed["min-score"] === true) error("--min-score needs a number from 0 to 100");
+    if (parsed["min-score"] !== undefined) params.set("minScore", parsed["min-score"]);
     if (parsed.from) params.set("from", parsed.from);
     if (parsed.to) params.set("to", parsed.to);
     if (parsed.limit) params.set("limit", parsed.limit);
@@ -316,6 +318,8 @@ const COMMANDS = {
     appendCsv(params, "keywords", parsed.keywords);
     appendCsv(params, "sources", parsed.sources);
     if (parsed["include-low"]) params.set("includeLowRelevance", "true");
+    if (parsed["min-score"] === true) error("--min-score needs a number from 0 to 100");
+    if (parsed["min-score"] !== undefined) params.set("minScore", parsed["min-score"]);
     if (parsed.from) params.set("from", parsed.from);
     if (parsed.to) params.set("to", parsed.to);
     const qs = params.toString();

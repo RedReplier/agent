@@ -472,6 +472,15 @@ function createMcpServer(apiClient?: RestClient): McpServer {
           .boolean()
           .optional()
           .describe('Include mentions below the website minimum score (30 by default), hidden otherwise'),
+        minScore: z
+          .number()
+          .int()
+          .min(0)
+          .max(100)
+          .optional()
+          .describe(
+            "Only mentions scoring at least this (0-100); unscored mentions are left out. Stacks on the website minimum, so set includeLowRelevance to go below it",
+          ),
         keywords: z
           .array(z.string())
           .optional()
@@ -543,6 +552,15 @@ function createMcpServer(apiClient?: RestClient): McpServer {
           .boolean()
           .optional()
           .describe('Include mentions below the website minimum score (30 by default), hidden otherwise'),
+        minScore: z
+          .number()
+          .int()
+          .min(0)
+          .max(100)
+          .optional()
+          .describe(
+            "Only mentions scoring at least this (0-100); unscored mentions are left out. Stacks on the website minimum, so set includeLowRelevance to go below it",
+          ),
         keywords: z
           .array(z.string())
           .optional()
