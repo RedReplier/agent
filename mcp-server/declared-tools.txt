@@ -1,3 +1,4 @@
+list_workspaces
 list_websites
 get_website
 create_website

@@ -62,10 +62,15 @@ npx skills add redreplier/agent
 | `REDREPLIER_API_TOKEN` | For stdio | API token from [redreplier.com/api-tokens](https://redreplier.com/api-tokens). The hosted HTTP server takes it per request instead. |
 | `REDREPLIER_API_URL` | No | Custom API base URL (defaults to production) |
 
+## Workspaces
+
+An OAuth sign-in reaches every workspace the user belongs to, each with its own websites, keywords and mentions. `list_workspaces` returns them, and every other tool takes an optional `workspaceId` that the server sends as the `X-Workspace-Id` header. Without it a tool works in the default workspace. A `workspaceId` the sign-in cannot reach returns 403 with `code: workspace_access_denied`. An API token belongs to one workspace, so `list_workspaces` shows only that one.
+
 ## Available Tools
 
 | Tool | Description |
 |---|---|
+| `list_workspaces` | List the workspaces the sign-in can act in; pass an id as `workspaceId` to any other tool |
 | `list_websites` | List monitored websites with their keywords and statuses |
 | `get_website` | Get a single website with its keywords |
 | `create_website` | Add a website to monitor (optional initial keywords + description) |

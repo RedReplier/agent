@@ -93,6 +93,7 @@ docker run -i -e REDREPLIER_API_TOKEN=redreplier_your_key redreplier-mcp
 - [RedReplier](https://redreplier.com)
 - [API Tokens](https://redreplier.com/api-tokens)
 - [MCP Server](./mcp-server)
+- Privacy policy: [redreplier.com/privacy](https://redreplier.com/privacy)
 
 ## License
 

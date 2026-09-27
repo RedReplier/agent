@@ -1,8 +1,17 @@
+export const WORKSPACE_ACCESS_DENIED = 'workspace_access_denied';
+
 export class RestClient {
   constructor(
     private baseUrl: string,
     private apiToken: string,
+    private workspaceId?: string,
   ) {}
+
+  forWorkspace(workspaceId: string | undefined): RestClient {
+    return workspaceId
+      ? new RestClient(this.baseUrl, this.apiToken, workspaceId)
+      : this;
+  }
 
   private async request<T = unknown>(
     method: string,
@@ -16,6 +25,7 @@ export class RestClient {
       headers: {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${this.apiToken}`,
+        ...(this.workspaceId ? { 'X-Workspace-Id': this.workspaceId } : {}),
       },
       ...(body ? { body: JSON.stringify(body) } : {}),
     });
@@ -28,6 +38,9 @@ export class RestClient {
           (errorBody as { message?: string | string[] }).message !== undefined
             ? JSON.stringify((errorBody as { message: unknown }).message)
             : JSON.stringify(errorBody);
+        if ((errorBody as { code?: string }).code === WORKSPACE_ACCESS_DENIED) {
+          errorMessage = `${errorMessage} (403, ${WORKSPACE_ACCESS_DENIED}). Call list_workspaces and pass one of the returned ids as workspaceId, or leave workspaceId out to use the default workspace.`;
+        }
       } catch {
         errorMessage = `${response.status} ${response.statusText}`;
       }

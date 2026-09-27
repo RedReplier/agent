@@ -3,7 +3,8 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
-import { z } from 'zod';
+import type { CallToolResult, ToolAnnotations } from '@modelcontextprotocol/sdk/types.js';
+import { z, type ZodRawShape, type ZodTypeAny } from 'zod';
 import { createServer, type IncomingMessage } from 'node:http';
 
 import { RestClient } from './rest-client.js';
@@ -66,6 +67,18 @@ const MentionSort = z.enum(['RELEVANCE', 'RECENT']);
 // Helpers
 // ---------------------------------------------------------------------------
 
+const workspaceIdField = {
+  workspaceId: z
+    .string()
+    .optional()
+    .describe(
+      'Workspace to act in: an id from list_workspaces. Omit to use the default workspace. Use the same workspaceId for every call about the same workspace, since ids from one workspace do not exist in another',
+    ),
+};
+
+const SERVER_INSTRUCTIONS =
+  'A sign-in can reach several workspaces, each with its own data and role. Call list_workspaces when the user names a workspace, client or organization, or when data they expect is missing, then pass that id as workspaceId on every call about it. Without workspaceId, tools act in the default workspace. A 403 with code workspace_access_denied means the workspaceId is not one this sign-in can reach; pick an id from list_workspaces.';
+
 const resultSchema = (description: string) => ({
   result: z.unknown().describe(description),
 });
@@ -90,15 +103,68 @@ function toolError(error: unknown) {
 // ---------------------------------------------------------------------------
 
 function createMcpServer(apiClient?: RestClient): McpServer {
-  const client = apiClient ?? api;
-  const server = new McpServer({
-    name: 'redreplier',
-    version: '1.0.0',
-  });
+  const baseClient = apiClient ?? api;
+  const server = new McpServer(
+    {
+      name: 'redreplier',
+      version: '1.0.0',
+    },
+    { instructions: SERVER_INSTRUCTIONS },
+  );
+
+  const tool = <Args extends ZodRawShape>(
+    name: string,
+    config: {
+      title: string;
+      description: string;
+      inputSchema: Args;
+      outputSchema: ZodRawShape;
+      annotations: ToolAnnotations;
+    },
+    handler: (
+      args: z.objectOutputType<Args, ZodTypeAny>,
+      client: RestClient,
+    ) => Promise<CallToolResult>,
+  ) => {
+    const inputSchema: ZodRawShape = { ...config.inputSchema, ...workspaceIdField };
+    return server.registerTool(name, { ...config, inputSchema }, async (args) => {
+      const { workspaceId, ...rest } = args as { workspaceId?: string };
+      return handler(
+        rest as z.objectOutputType<Args, ZodTypeAny>,
+        baseClient.forWorkspace(workspaceId),
+      );
+    });
+  };
+
+  server.registerTool(
+    'list_workspaces',
+    {
+      title: 'List Workspaces',
+      description:
+        'List the workspaces this sign-in can act in, across every organization the user belongs to. Returns { workspaces } with one entry per workspace: id, name, organization { id, name }, role { key, name }, permissions, isDefault and current. Call this when the user names a workspace, client or organization, or when data they expect is missing, then pass the matching id as workspaceId to every other tool. Without workspaceId, tools act in the workspace marked current. An API key belongs to one workspace, so it lists only that one. Takes no arguments.',
+      inputSchema: {},
+      outputSchema: resultSchema(
+        'One entry per workspace with id, name, organization, role, permissions, isDefault and current. Pass id as workspaceId to other tools.',
+      ),
+      annotations: {
+        readOnlyHint: true,
+        openWorldHint: false,
+        destructiveHint: false,
+      },
+    },
+    async () => {
+      try {
+        const data = await baseClient.get('/workspaces');
+        return toolResult(data);
+      } catch (error) {
+        return toolError(error);
+      }
+    },
+  );
 
   // ── Websites ────────────────────────────────────────────────────────────
 
-  server.registerTool(
+  tool(
     'list_websites',
     {
       title: 'List Monitored Websites',
@@ -114,7 +180,7 @@ function createMcpServer(apiClient?: RestClient): McpServer {
         openWorldHint: true,
       },
     },
-    async () => {
+    async (_args, client) => {
       try {
         return toolResult(await client.get('/websites'));
       } catch (error) {
@@ -123,7 +189,7 @@ function createMcpServer(apiClient?: RestClient): McpServer {
     },
   );
 
-  server.registerTool(
+  tool(
     'get_website',
     {
       title: 'Get Monitored Website',
@@ -141,7 +207,7 @@ function createMcpServer(apiClient?: RestClient): McpServer {
         openWorldHint: false,
       },
     },
-    async ({ websiteId }) => {
+    async ({ websiteId }, client) => {
       try {
         return toolResult(await client.get(`/websites/${websiteId}`));
       } catch (error) {
@@ -150,7 +216,7 @@ function createMcpServer(apiClient?: RestClient): McpServer {
     },
   );
 
-  server.registerTool(
+  tool(
     'create_website',
     {
       title: 'Add Website to Monitor',
@@ -182,7 +248,7 @@ function createMcpServer(apiClient?: RestClient): McpServer {
         openWorldHint: true,
       },
     },
-    async (input) => {
+    async (input, client) => {
       try {
         return toolResult(await client.post('/websites', input));
       } catch (error) {
@@ -191,7 +257,7 @@ function createMcpServer(apiClient?: RestClient): McpServer {
     },
   );
 
-  server.registerTool(
+  tool(
     'update_website',
     {
       title: 'Update Monitored Website',
@@ -215,7 +281,7 @@ function createMcpServer(apiClient?: RestClient): McpServer {
         openWorldHint: false,
       },
     },
-    async ({ websiteId, ...body }) => {
+    async ({ websiteId, ...body }, client) => {
       try {
         return toolResult(await client.patch(`/websites/${websiteId}`, body));
       } catch (error) {
@@ -224,7 +290,7 @@ function createMcpServer(apiClient?: RestClient): McpServer {
     },
   );
 
-  server.registerTool(
+  tool(
     'delete_website',
     {
       title: 'Stop Monitoring Website',
@@ -240,7 +306,7 @@ function createMcpServer(apiClient?: RestClient): McpServer {
         openWorldHint: false,
       },
     },
-    async ({ websiteId }) => {
+    async ({ websiteId }, client) => {
       try {
         return toolResult(await client.delete(`/websites/${websiteId}`));
       } catch (error) {
@@ -249,7 +315,7 @@ function createMcpServer(apiClient?: RestClient): McpServer {
     },
   );
 
-  server.registerTool(
+  tool(
     'analyze_website',
     {
       title: 'Analyze Website',
@@ -267,7 +333,7 @@ function createMcpServer(apiClient?: RestClient): McpServer {
         openWorldHint: true,
       },
     },
-    async ({ url }) => {
+    async ({ url }, client) => {
       try {
         return toolResult(
           await client.post('/websites/analyze-description', { url }),
@@ -280,7 +346,7 @@ function createMcpServer(apiClient?: RestClient): McpServer {
 
   // ── Keywords ──────────────────────────────────────────────────────────────
 
-  server.registerTool(
+  tool(
     'add_keywords',
     {
       title: 'Add Keywords',
@@ -304,7 +370,7 @@ function createMcpServer(apiClient?: RestClient): McpServer {
         openWorldHint: true,
       },
     },
-    async ({ websiteId, keywords }) => {
+    async ({ websiteId, keywords }, client) => {
       try {
         return toolResult(
           await client.post(`/websites/${websiteId}/keywords`, { keywords }),
@@ -315,7 +381,7 @@ function createMcpServer(apiClient?: RestClient): McpServer {
     },
   );
 
-  server.registerTool(
+  tool(
     'edit_keyword',
     {
       title: 'Edit Keyword',
@@ -337,7 +403,7 @@ function createMcpServer(apiClient?: RestClient): McpServer {
         openWorldHint: true,
       },
     },
-    async ({ keywordId, value }) => {
+    async ({ keywordId, value }, client) => {
       try {
         return toolResult(await client.patch(`/keywords/${keywordId}`, { value }));
       } catch (error) {
@@ -346,7 +412,7 @@ function createMcpServer(apiClient?: RestClient): McpServer {
     },
   );
 
-  server.registerTool(
+  tool(
     'disable_keyword',
     {
       title: 'Disable Keyword',
@@ -362,7 +428,7 @@ function createMcpServer(apiClient?: RestClient): McpServer {
         openWorldHint: false,
       },
     },
-    async ({ keywordId }) => {
+    async ({ keywordId }, client) => {
       try {
         return toolResult(await client.post(`/keywords/${keywordId}/disable`));
       } catch (error) {
@@ -371,7 +437,7 @@ function createMcpServer(apiClient?: RestClient): McpServer {
     },
   );
 
-  server.registerTool(
+  tool(
     'enable_keyword',
     {
       title: 'Enable Keyword',
@@ -389,7 +455,7 @@ function createMcpServer(apiClient?: RestClient): McpServer {
         openWorldHint: false,
       },
     },
-    async ({ keywordId }) => {
+    async ({ keywordId }, client) => {
       try {
         return toolResult(await client.post(`/keywords/${keywordId}/enable`));
       } catch (error) {
@@ -398,7 +464,7 @@ function createMcpServer(apiClient?: RestClient): McpServer {
     },
   );
 
-  server.registerTool(
+  tool(
     'delete_keyword',
     {
       title: 'Delete Keyword',
@@ -414,7 +480,7 @@ function createMcpServer(apiClient?: RestClient): McpServer {
         openWorldHint: false,
       },
     },
-    async ({ keywordId }) => {
+    async ({ keywordId }, client) => {
       try {
         return toolResult(await client.delete(`/keywords/${keywordId}`));
       } catch (error) {
@@ -423,7 +489,7 @@ function createMcpServer(apiClient?: RestClient): McpServer {
     },
   );
 
-  server.registerTool(
+  tool(
     'keyword_change_usage',
     {
       title: 'Get Keyword Edit Allowance',
@@ -439,7 +505,7 @@ function createMcpServer(apiClient?: RestClient): McpServer {
         openWorldHint: false,
       },
     },
-    async () => {
+    async (_args, client) => {
       try {
         return toolResult(await client.get('/keywords/change-usage'));
       } catch (error) {
@@ -450,7 +516,7 @@ function createMcpServer(apiClient?: RestClient): McpServer {
 
   // ── Mentions ────────────────────────────────────────────────────────────
 
-  server.registerTool(
+  tool(
     'list_mentions',
     {
       title: 'List Mentions',
@@ -521,7 +587,7 @@ function createMcpServer(apiClient?: RestClient): McpServer {
         openWorldHint: false,
       },
     },
-    async (input) => {
+    async (input, client) => {
       try {
         return toolResult(await client.get('/mentions', input));
       } catch (error) {
@@ -530,7 +596,7 @@ function createMcpServer(apiClient?: RestClient): McpServer {
     },
   );
 
-  server.registerTool(
+  tool(
     'count_mentions',
     {
       title: 'Count Mentions',
@@ -589,7 +655,7 @@ function createMcpServer(apiClient?: RestClient): McpServer {
         openWorldHint: false,
       },
     },
-    async (input) => {
+    async (input, client) => {
       try {
         return toolResult(await client.get('/mentions/count', input));
       } catch (error) {
@@ -598,7 +664,7 @@ function createMcpServer(apiClient?: RestClient): McpServer {
     },
   );
 
-  server.registerTool(
+  tool(
     'update_mention_status',
     {
       title: 'Update Mention Status',
@@ -617,7 +683,7 @@ function createMcpServer(apiClient?: RestClient): McpServer {
         openWorldHint: false,
       },
     },
-    async ({ mentionId, status }) => {
+    async ({ mentionId, status }, client) => {
       try {
         return toolResult(
           await client.patch(`/mentions/${mentionId}/status`, { status }),
@@ -628,7 +694,7 @@ function createMcpServer(apiClient?: RestClient): McpServer {
     },
   );
 
-  server.registerTool(
+  tool(
     'explain_mention',
     {
       title: 'Explain Mention Score',
@@ -646,7 +712,7 @@ function createMcpServer(apiClient?: RestClient): McpServer {
         openWorldHint: false,
       },
     },
-    async ({ mentionId }) => {
+    async ({ mentionId }, client) => {
       try {
         return toolResult(await client.post(`/mentions/${mentionId}/explain`));
       } catch (error) {
@@ -657,7 +723,7 @@ function createMcpServer(apiClient?: RestClient): McpServer {
 
   // ── Alert settings ────────────────────────────────────────────────────────
 
-  server.registerTool(
+  tool(
     'get_alert_settings',
     {
       title: 'Get Alert Settings',
@@ -673,7 +739,7 @@ function createMcpServer(apiClient?: RestClient): McpServer {
         openWorldHint: false,
       },
     },
-    async () => {
+    async (_args, client) => {
       try {
         return toolResult(await client.get('/alert-settings'));
       } catch (error) {
@@ -682,7 +748,7 @@ function createMcpServer(apiClient?: RestClient): McpServer {
     },
   );
 
-  server.registerTool(
+  tool(
     'update_alert_settings',
     {
       title: 'Update Alert Settings',
@@ -707,7 +773,7 @@ function createMcpServer(apiClient?: RestClient): McpServer {
         openWorldHint: false,
       },
     },
-    async (input) => {
+    async (input, client) => {
       try {
         return toolResult(await client.put('/alert-settings', input));
       } catch (error) {
