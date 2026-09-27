@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * RedReplier Agent Skill CLI
- * A zero-dependency Node.js script for Reddit, Hacker News, X, and Bluesky keyword monitoring via the RedReplier API.
+ * A zero-dependency Node.js script for Reddit, Hacker News, X, Bluesky, and Facebook keyword monitoring via the RedReplier API.
  *
  * MIT Licensed — https://github.com/redreplier/agent
  */
@@ -13,6 +13,8 @@ const API_BASE = "https://ai.redreplier.com/ai-app";
 const CONFIG_DIR = path.join(os.homedir(), ".config", "redreplier");
 const CONFIG_FILE = path.join(CONFIG_DIR, "config.json");
 const LOCAL_CONFIG = path.join(process.cwd(), ".redreplier", "config.json");
+
+let workspaceId = null;
 
 // ── Config ──────────────────────────────────────────────────────────────────
 
@@ -54,6 +56,7 @@ async function request(method, endpoint, body = null) {
     Authorization: `Bearer ${apiKey}`,
     "Content-Type": "application/json",
   };
+  if (workspaceId) headers["X-Workspace-Id"] = workspaceId;
   const options = { method, headers };
   if (body) options.body = JSON.stringify(body);
 
@@ -82,6 +85,11 @@ function error(msg) {
   console.error(`\x1b[31mError:\x1b[0m ${msg}`);
 }
 
+function fail(msg) {
+  error(msg);
+  process.exit(1);
+}
+
 function info(msg) {
   console.error(`\x1b[36mInfo:\x1b[0m ${msg}`);
 }
@@ -94,7 +102,7 @@ function parseArgs(args) {
     if (args[i].startsWith("--")) {
       const key = args[i].slice(2);
       const next = args[i + 1];
-      if (!next || next.startsWith("--")) {
+      if (next === undefined || next.startsWith("--")) {
         parsed[key] = true;
       } else {
         parsed[key] = next;
@@ -103,6 +111,21 @@ function parseArgs(args) {
     }
   }
   return parsed;
+}
+
+function setMinScore(params, value) {
+  if (value === undefined) return;
+  const score = Number(value);
+  if (value === true || value === "" || !Number.isInteger(score) || score < 0 || score > 100) {
+    fail("--min-score needs a whole number from 0 to 100");
+  }
+  params.set("minScore", String(score));
+}
+
+function stringArg(parsed, key) {
+  const value = parsed[key];
+  if (value === true) fail(`--${key} needs a value`);
+  return value;
 }
 
 function appendCsv(params, key, value) {
@@ -131,6 +154,12 @@ const COMMANDS = {
     output({ status: "configured", location: global ? "global" : "local" });
   },
 
+  // ── Workspaces ────────────────────────────────────────────────────────────
+
+  workspaces: async () => {
+    output(await request("GET", "/api/v1/workspaces"));
+  },
+
   // ── Websites ──────────────────────────────────────────────────────────────
 
   websites: async () => {
@@ -150,13 +179,16 @@ const COMMANDS = {
     const parsed = parseArgs(args);
     if (!parsed.url) {
       error(
-        'Usage: ./scripts/redreplier.js websites:create --url "https://example.com" [--name "Name"] [--keywords a,b,c] [--description "..."]',
+        'Usage: ./scripts/redreplier.js websites:create --url "https://example.com" [--name "Name"] [--keywords a,b,c] [--description "..." | --no-analyze]',
       );
       process.exit(1);
     }
     const body = { url: parsed.url };
-    if (parsed.name) body.name = parsed.name;
-    if (parsed.description) body.description = parsed.description;
+    const name = stringArg(parsed, "name");
+    const description = stringArg(parsed, "description");
+    if (name) body.name = name;
+    if (description !== undefined) body.description = description;
+    else if (parsed["no-analyze"]) body.description = "";
     if (parsed.keywords)
       body.keywords = parsed.keywords.split(",").map((k) => k.trim()).filter(Boolean);
     output(await request("POST", "/api/v1/websites", body));
@@ -166,13 +198,19 @@ const COMMANDS = {
     const parsed = parseArgs(args);
     if (!parsed.id) {
       error(
-        'Usage: ./scripts/redreplier.js websites:update --id <website_id> [--name "..."] [--description "..."]',
+        'Usage: ./scripts/redreplier.js websites:update --id <website_id> [--name "..."] [--description "..." | --clear-description]',
       );
       process.exit(1);
     }
     const body = {};
-    if (parsed.name) body.name = parsed.name;
-    if (parsed.description) body.description = parsed.description;
+    const name = stringArg(parsed, "name");
+    const description = stringArg(parsed, "description");
+    if (name) body.name = name;
+    if (parsed["clear-description"]) body.description = "";
+    else if (description !== undefined) body.description = description;
+    if (Object.keys(body).length === 0) {
+      fail("Nothing to update. Pass --name, --description, or --clear-description");
+    }
     output(await request("PATCH", `/api/v1/websites/${parsed.id}`, body));
   },
 
@@ -299,8 +337,7 @@ const COMMANDS = {
     appendCsv(params, "sources", parsed.sources);
     if (parsed.sort) params.set("sort", parsed.sort);
     if (parsed["include-low"]) params.set("includeLowRelevance", "true");
-    if (parsed["min-score"] === true) error("--min-score needs a number from 0 to 100");
-    if (parsed["min-score"] !== undefined) params.set("minScore", parsed["min-score"]);
+    setMinScore(params, parsed["min-score"]);
     if (parsed.from) params.set("from", parsed.from);
     if (parsed.to) params.set("to", parsed.to);
     if (parsed.limit) params.set("limit", parsed.limit);
@@ -318,8 +355,7 @@ const COMMANDS = {
     appendCsv(params, "keywords", parsed.keywords);
     appendCsv(params, "sources", parsed.sources);
     if (parsed["include-low"]) params.set("includeLowRelevance", "true");
-    if (parsed["min-score"] === true) error("--min-score needs a number from 0 to 100");
-    if (parsed["min-score"] !== undefined) params.set("minScore", parsed["min-score"]);
+    setMinScore(params, parsed["min-score"]);
     if (parsed.from) params.set("from", parsed.from);
     if (parsed.to) params.set("to", parsed.to);
     const qs = params.toString();
@@ -385,6 +421,10 @@ const COMMANDS = {
 async function main() {
   const command = process.argv[2] || "help";
   const args = process.argv.slice(3);
+  if (args.includes("--workspace")) {
+    workspaceId = stringArg(parseArgs(args), "workspace");
+    if (!workspaceId) fail("--workspace needs a workspace id");
+  }
 
   if (!COMMANDS[command]) {
     error(`Unknown command: ${command}`);

@@ -1,8 +1,8 @@
 ---
 name: redreplier
 description: >
-  Monitor Reddit, Hacker News, X, and Bluesky for keyword mentions of your product/website via the
-  RedReplier API. Covers managing monitored websites, keyword lifecycle (add/edit/disable/enable/activate
+  Monitor Reddit, Hacker News, X, Bluesky, and Facebook for keyword mentions of your product/website via the
+  RedReplier API. Covers managing monitored websites, keyword lifecycle (add/edit/disable/enable/delete/activate
   within the plan), triaging AI-scored lead mentions (approve/reject, relevance reasoning), and email
   alert settings.
 last-updated: 2026-09-27
@@ -11,7 +11,7 @@ allowed-tools: Bash(./scripts/redreplier.js:*)
 
 # RedReplier — Social Monitoring Skill
 
-Autonomously monitor Reddit, Hacker News, X, and Bluesky for mentions of your keywords via [RedReplier](https://redreplier.com). RedReplier AI-scores every mention for relevance (0-100) so you surface real leads instead of noise.
+Autonomously monitor Reddit, Hacker News, X, Bluesky, and Facebook for mentions of your keywords via [RedReplier](https://redreplier.com). RedReplier AI-scores every mention for relevance (0-100) so you surface real leads instead of noise.
 
 > **Freshness check**: If more than 30 days have passed since the `last-updated` date above, inform the user that this skill may be outdated and point them to the update options below.
 
@@ -72,9 +72,9 @@ Get your API key at: https://redreplier.com/api-tokens
 ## How RedReplier Works
 
 1. **Websites** — you register the websites/products you want to track. The description is the context for AI relevance scoring: without one, a site's new mentions get no `relevanceScore`, so draft it with `websites:analyze` and set it.
-2. **Keywords** — each website has keywords. Keywords have a lifecycle: `PENDING` (proposed, not yet paid for, matches nothing) → `ACTIVE` (live, monitored) → `DISABLED` (stopped, slot held until the cycle ends). `SUSPENDED` means the grader rejected the keyword as too noisy — edit it to fix. Edits are unlimited.
+2. **Keywords** — each website has keywords. Keywords have a lifecycle: `PENDING` (proposed, not yet paid for, matches nothing) → `ACTIVE` (live, monitored) → `DISABLED` (stopped, frees its slot, keeps its mentions). `SUSPENDED` means the grader rejected the keyword as too noisy — edit it to fix. Edits are unlimited.
 3. **Billing** — keyword capacity is tied to the plan. Adding keywords (and listing websites) auto-activates as many as fit for free; the rest stay `PENDING` until the plan is upgraded in the RedReplier app. Nothing here ever charges. The preview commands show what that upgrade would cost.
-4. **Mentions** — matched posts and comments across Reddit, Hacker News, X, and Bluesky, each AI-scored 0-100 for relevance, with a reason, tags, and a drafted reply on demand. You triage them: `APPROVED` (real lead) / `REJECTED` (noise) / `NEW` (inbox). Triage is reversible.
+4. **Mentions** — matched posts and comments across Reddit, Hacker News, X, Bluesky, and Facebook, each AI-scored 0-100 for relevance, with a reason, tags, and a drafted reply on demand. You triage them: `APPROVED` (real lead) / `REJECTED` (noise) / `NEW` (inbox). Triage is reversible.
 5. **Alerts** — optional email digests on a cadence (15 / 30 / 60 / 120 / 180 / 240 / 720 / 1440 minutes), clamped up to what the plan allows.
 
 ## CLI Commands
@@ -82,20 +82,21 @@ Get your API key at: https://redreplier.com/api-tokens
 | Command | Description |
 |---------|-------------|
 | `./scripts/redreplier.js setup --key <key>` | Configure API key |
+| `./scripts/redreplier.js workspaces` | List the workspaces this key can act in. An API key reaches only its own workspace |
 | `./scripts/redreplier.js websites` | List monitored websites with keyword IDs and statuses. Run first. Also promotes PENDING keywords that fit the plan for free |
 | `./scripts/redreplier.js websites:get --id <id>` | Get one website with its keywords; use it to re-check statuses after a keyword change |
-| `./scripts/redreplier.js websites:create --url <url> [--name ..] [--keywords a,b] [--description ..]` | Add a website. Without `--description` the URL is scraped to write one (one AI generation); if the response shows `description: null`, run `websites:analyze` and `websites:update`. Initial keywords land as PENDING; duplicate domains are rejected |
-| `./scripts/redreplier.js websites:update --id <id> [--name ..] [--description ..]` | Update name and/or description; omitted fields are kept. The description is the scoring context |
+| `./scripts/redreplier.js websites:create --url <url> [--name ..] [--keywords a,b] [--description .. \| --no-analyze]` | Add a website. Without `--description` the URL is scraped to write one (one AI generation); if the response shows `description: null`, run `websites:analyze` and `websites:update`. `--no-analyze` sends `description: ""`, which skips the scrape and the AI generation and leaves the site without a description. Initial keywords land as PENDING; duplicate domains are rejected |
+| `./scripts/redreplier.js websites:update --id <id> [--name ..] [--description .. \| --clear-description]` | Update name and/or description; omitted fields are kept. `--clear-description` (or `--description ""`) removes the description, which stops new mentions being scored. The description is the scoring context |
 | `./scripts/redreplier.js websites:delete --id <id>` | Stop monitoring a website (soft delete, no restore command; re-creating the URL revives it). Confirm with the user first |
 | `./scripts/redreplier.js websites:analyze --url <url>` | Scrape a URL and AI-generate a description without creating anything (uses one AI generation) |
 | `./scripts/redreplier.js keywords:add --website <id> --keywords a,b` | Add keywords (unlimited). Those that fit the plan go ACTIVE for free; the rest stay PENDING until the plan is upgraded in the app. Returns the whole website |
 | `./scripts/redreplier.js keywords:edit --id <id> --value "new"` | Reword a keyword in place (unlimited, re-graded, keeps its slot). Use it to fix a SUSPENDED keyword instead of adding a variant |
-| `./scripts/redreplier.js keywords:disable --id <id>` | Stop one keyword immediately (unlimited, reversible). Its paid slot is held until the cycle ends |
-| `./scripts/redreplier.js keywords:enable --id <id>` | Re-enable one DISABLED keyword. ACTIVE if it fits the plan or was disabled this cycle; otherwise stays PENDING until the plan is upgraded in the app. Never charges |
-| `./scripts/redreplier.js keywords:delete --id <id>` | Permanently delete a PENDING keyword (any other status is rejected). No billing effect |
+| `./scripts/redreplier.js keywords:disable --id <id>` | Stop one keyword immediately (unlimited, reversible). Frees its slot and keeps its mentions |
+| `./scripts/redreplier.js keywords:enable --id <id>` | Re-enable one DISABLED keyword. ACTIVE if the plan has a free slot; otherwise PENDING until the plan is upgraded in the app. Never charges |
+| `./scripts/redreplier.js keywords:delete --id <id>` | Permanently delete a keyword in any status together with every mention it produced. No undo; confirm with the user first. Frees its slot, no refund |
 | `./scripts/redreplier.js keywords:activate` | Activate PENDING keywords up to the free slots on the plan. Never charges; the rest stay PENDING |
 | `./scripts/redreplier.js keywords:activate-preview` | Price a plan upgrade covering everything currently PENDING, no changes (`immediateCharge`, `targetPlanName`) |
-| `./scripts/redreplier.js keywords:billing-preview --count <n>` | Price an absolute total of N active keywords, no changes. Use before `keywords:add` or `keywords:enable` |
+| `./scripts/redreplier.js keywords:billing-preview --count <n>` | Price an absolute total of N active keywords, no changes. Informational only: no command upgrades the plan |
 | `./scripts/redreplier.js keywords:usage` | Keyword-edit allowance; every plan currently reports unlimited (`limit: -1`) |
 | `./scripts/redreplier.js mentions [filters]` | List AI-scored mentions. By default REJECTED and below-threshold (score < 30) mentions are hidden |
 | `./scripts/redreplier.js mentions:count [filters]` | Count mentions with the same filters and defaults, no rows |
@@ -104,33 +105,43 @@ Get your API key at: https://redreplier.com/api-tokens
 | `./scripts/redreplier.js alerts` | Get email-alert settings, including `minIntervalMinutes` and `availableCadences` |
 | `./scripts/redreplier.js alerts:update --enabled true --cadence 240` | Set alerts. Cadence: 15, 30, 60, 120, 180, 240, 720, 1440, clamped to the plan floor; omitting `--cadence` resets it to the fastest allowed |
 
-`mentions` / `mentions:count` filters: `--website <id>`, `--status NEW,APPROVED,REJECTED`, `--buckets VERY_LOW,LOW,MEDIUM,HIGH,VERY_HIGH`, `--keywords a,b`, `--sources REDDIT_POST,REDDIT_COMMENT,TWITTER,BLUESKY,HACKERNEWS`, `--sort RELEVANCE|RECENT`, `--include-low`, `--min-score <0-100>`, `--from <ISO>`, `--to <ISO>`, `--limit <1-500>`, `--offset <n>`. `--buckets LOW,VERY_LOW` only returns rows together with `--include-low`; `--min-score 70` keeps mentions scoring 70 or more and drops unscored ones; `--from`/`--to` filter on ingestion time.
+`mentions` / `mentions:count` filters: `--website <id>`, `--status NEW,APPROVED,REJECTED`, `--buckets VERY_LOW,LOW,MEDIUM,HIGH,VERY_HIGH`, `--keywords a,b`, `--sources REDDIT_POST,REDDIT_COMMENT,TWITTER,BLUESKY,HACKERNEWS,FACEBOOK,FACEBOOK_GROUP`, `--sort RELEVANCE|RECENT`, `--include-low`, `--min-score <0-100>`, `--from <ISO>`, `--to <ISO>`, `--limit <1-500>`, `--offset <n>`. `--buckets LOW,VERY_LOW` only returns rows together with `--include-low`; `--min-score 70` keeps mentions scoring 70 or more and drops unscored ones; `--from`/`--to` filter on ingestion time. A `--min-score` without a whole number from 0 to 100 exits with an error and sends nothing.
+
+Every command accepts `--workspace <id>`, which sends the `X-Workspace-Id` header. With an API key it can only name the key's own workspace; get the id from `workspaces`.
 
 ## API Reference
 
-Use these endpoints directly if you prefer raw API calls over the CLI. Base: `https://ai.redreplier.com/ai-app/api/v1`. The account is derived from the API token — you never pass an account/group ID.
+Use these endpoints directly if you prefer raw API calls over the CLI. Base: `https://ai.redreplier.com/ai-app`, so the paths below start with `/api/v1`. The workspace is derived from the API token; you never pass an account/group ID.
+
+### Workspaces
+
+```
+GET    /api/v1/workspaces                     # { workspaces: [{ id, name, organization, role, permissions, isDefault, current }] }
+```
+
+Every endpoint also accepts an optional `X-Workspace-Id` header. An API key belongs to one workspace, so `/workspaces` lists only that one and the header can only name it; any other id answers 403 with `code: workspace_access_denied`. An OAuth sign-in (the hosted MCP server) reaches every workspace its member belongs to and picks one per call with the header.
 
 ### Websites
 
 ```
 GET    /api/v1/websites                       # list (with keywords)
 GET    /api/v1/websites/{id}                   # get one
-POST   /api/v1/websites                        # { url, name?, keywords?, description? }
-PATCH  /api/v1/websites/{id}                   # { name?, description? }
+POST   /api/v1/websites                        # { url, name?, keywords?, description? }; description "" skips the analysis
+PATCH  /api/v1/websites/{id}                   # { name?, description? }; description "" clears it
 DELETE /api/v1/websites/{id}                   # soft delete
 POST   /api/v1/websites/analyze-description    # { url } -> { description }
 ```
 
-Keywords created with a website start `PENDING`. `description` is the scoring context; without it new mentions get no `relevanceScore`, so generate one with `analyze-description` and pass it (or set it later with `PATCH`). `PATCH` keeps omitted fields. `DELETE` is a soft delete that re-creating the URL revives.
+Keywords created with a website start `PENDING`. `description` is the scoring context; without it new mentions get no `relevanceScore`, so generate one with `analyze-description` and pass it (or set it later with `PATCH`). Omitting `description` on `POST` scrapes the URL and spends one AI generation; `description: ""` skips that and creates the site without one. `PATCH` keeps omitted fields. `DELETE` is a soft delete that re-creating the URL revives.
 
 ### Keywords
 
 ```
 POST   /api/v1/websites/{id}/keywords          # { keywords: string[] }  (auto-activates within plan; returns the website)
 PATCH  /api/v1/keywords/{id}                    # { value }              (re-graded; unlimited; keeps its slot)
-POST   /api/v1/keywords/{id}/disable            # -> DISABLED (slot held until cycle end)
+POST   /api/v1/keywords/{id}/disable            # -> DISABLED (frees the slot, keeps mentions)
 POST   /api/v1/keywords/{id}/enable             # -> ACTIVE, or PENDING when the plan is full (never charges)
-DELETE /api/v1/keywords/{id}                    # only PENDING keywords; permanent
+DELETE /api/v1/keywords/{id}                    # any status; also deletes every mention it produced; permanent
 POST   /api/v1/keywords/activate-pending        # activates within the plan's free slots only (never charges)
 GET    /api/v1/keywords/activate-pending/preview # cost of an upgrade covering what is PENDING now
 GET    /api/v1/keywords/billing-preview?desiredKeywordCount=N   # N = absolute active total wanted
@@ -148,9 +159,9 @@ PATCH /api/v1/mentions/{id}/status              # { status: NEW | APPROVED | REJ
 POST  /api/v1/mentions/{id}/explain             # lazily generates + returns relevance reason/tags
 ```
 
-Defaults: REJECTED mentions are excluded (unless `statuses` names them) and mentions below the website's minimum score (30 by default) are hidden unless `includeLowRelevance=true`; `scoreBuckets` does not lift that cutoff, and neither does `minScore` (0-100), which only narrows the rows further and leaves out unscored mentions. `sort` is `RELEVANCE` (default) or `RECENT`. `limit` 1-500 (default 50). Relevance buckets: `VERY_LOW` (<10), `LOW` (10-29), `MEDIUM` (30-49), `HIGH` (50-74), `VERY_HIGH` (75+). Sources: `REDDIT_POST`, `REDDIT_COMMENT`, `TWITTER` (X), `BLUESKY`, `HACKERNEWS`.
+Defaults: REJECTED mentions are excluded (unless `statuses` names them) and mentions below the website's minimum score (30 by default) are hidden unless `includeLowRelevance=true`; `scoreBuckets` does not lift that cutoff, and neither does `minScore` (0-100), which only narrows the rows further and leaves out unscored mentions. `sort` is `RELEVANCE` (default) or `RECENT`. `limit` 1-500 (default 50). Relevance buckets: `VERY_LOW` (<10), `LOW` (10-29), `MEDIUM` (30-49), `HIGH` (50-74), `VERY_HIGH` (75+). Sources: `REDDIT_POST`, `REDDIT_COMMENT`, `TWITTER` (X), `BLUESKY`, `HACKERNEWS`, `FACEBOOK`, `FACEBOOK_GROUP`. `from`/`to` filter on ingestion time (`ingestedAt`), not publish time.
 
-List returns `{ mentions: [...], total, limit, offset }`. Each mention: `id`, `websiteId`, `source`, `keyword`, `title`, `contentText`, `url`, `author`, `subreddit`, `status`, `relevanceScore`, `relevanceReason`, `aiReplySuggestion`, `tags`, `publishedAt`, `ingestedAt`, `reviewedAt`. `explain` fills in `relevanceReason`, `tags`, and `aiReplySuggestion` on first call and needs the website to have a description; it returns `null` for an unknown ID. `subreddit` is only set for Reddit sources (null for X, Bluesky, and Hacker News).
+List returns `{ mentions: [...], total, limit, offset }`. Each mention: `id`, `websiteId`, `source`, `keyword`, `title`, `contentText`, `url`, `author`, `subreddit`, `status`, `relevanceScore`, `relevanceReason`, `aiReplySuggestion`, `tags`, `publishedAt`, `ingestedAt`, `reviewedAt`. `explain` fills in `relevanceReason`, `tags`, and `aiReplySuggestion` on first call and needs the website to have a description; it returns `null` for an unknown ID. `subreddit` holds the subreddit for Reddit sources and the group id for `FACEBOOK_GROUP`; it is null for the other sources.
 
 ### Alert Settings
 
@@ -161,9 +172,22 @@ PUT /api/v1/alert-settings                       # { enabled, cadenceMinutes? }
 
 `cadenceMinutes` must be one of `15, 30, 60, 120, 180, 240, 720, 1440` and is clamped up to `minIntervalMinutes` (the plan's fastest allowed cadence). The PUT replaces both settings: omitting `cadenceMinutes` resets it to the fastest allowed, so pass the current value when only toggling `enabled`.
 
+### Errors
+
+Error bodies are `{ statusCode, error, message }`, plus a machine-readable `code` on these:
+
+| Status | `code` | Meaning | What to do |
+|--------|--------|---------|------------|
+| 401 | none | Missing, malformed, or revoked API key | Ask the user for a valid key |
+| 401 | `token_issuer_lost_access` | The person who created the key was deactivated or left the workspace | A current member must create a new key |
+| 403 | `subscription_required` | The workspace's plan does not include API access | Stop; the plan must change in the RedReplier app |
+| 403 | `permission_denied` | The key's role does not hold the permission this call needs (`requiredPermission` names it) | Stop; someone with a higher role must act or issue a key with that role |
+| 403 | `workspace_access_denied` | `X-Workspace-Id` names a workspace this key or sign-in cannot reach | Drop the header or use an id from `/workspaces` |
+| 429 | none | Rate limit hit | Wait the `Retry-After` seconds |
+
 ## MCP Integration
 
-RedReplier has a native MCP server. For Claude Desktop, Cursor, or any MCP-compatible client, connect directly:
+RedReplier has a native MCP server at `https://mcp.redreplier.com/mcp`. OAuth-capable clients connect with just the URL and sign in in the browser; that sign-in reaches every workspace the user belongs to (`list_workspaces`, then `workspaceId` on each tool). Clients without OAuth can send an API key instead:
 
 ```json
 {
@@ -183,8 +207,8 @@ RedReplier has a native MCP server. For Claude Desktop, Cursor, or any MCP-compa
 
 - **No command charges.** Approving/rejecting mentions is safe and reversible. Keywords beyond the plan stay `PENDING`; plan upgrades happen only in the RedReplier app.
 - **One keyword vs. all pending.** `keywords:enable` brings back one `DISABLED` keyword; `keywords:activate` brings every `PENDING` keyword live at once.
-- **Confirm before deleting websites.** `websites:delete` stops all monitoring for that site and there is no restore command.
-- **Edits are unlimited.** `keywords:edit` re-grades the new value and keeps the keyword's slot; `keywords:usage` reports `limit: -1` on every plan. Prefer editing over adding a near-duplicate, and disabling over deleting (only `PENDING` keywords can be deleted).
+- **Confirm before deleting.** `websites:delete` stops all monitoring for that site and there is no restore command. `keywords:delete` erases the keyword and every mention it produced, with no undo.
+- **Edits are unlimited.** `keywords:edit` re-grades the new value and keeps the keyword's slot; `keywords:usage` reports `limit: -1` on every plan. Prefer editing over adding a near-duplicate, and disabling over deleting (disabling keeps the mentions).
 - **Respect the grader.** A `SUSPENDED` keyword was judged too noisy — fix it with `keywords:edit`, don't try to force it active.
 
 ## Tips
@@ -195,4 +219,4 @@ RedReplier has a native MCP server. For Claude Desktop, Cursor, or any MCP-compa
 - Default mention lists hide low-relevance noise — pass `--include-low` only when you specifically want everything.
 - Use `--sort RECENT` for "what's new", `--sort RELEVANCE` (default) for "best leads first".
 - Use `mentions:explain` to understand *why* a mention scored the way it did before approving/rejecting a borderline one; it is slow on first call, so don't run it across a whole list.
-- The account is determined by the API token; there is no account/group parameter on any call.
+- The workspace is determined by the API token; there is no account/group parameter on any call. `X-Workspace-Id` is optional and, with an API key, can only name the key's own workspace.

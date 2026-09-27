@@ -53,6 +53,8 @@ const MentionSource = z.enum([
   'TWITTER',
   'BLUESKY',
   'HACKERNEWS',
+  'FACEBOOK',
+  'FACEBOOK_GROUP',
 ]);
 const RelevanceBucket = z.enum([
   'VERY_LOW',
@@ -77,7 +79,7 @@ const workspaceIdField = {
 };
 
 const SERVER_INSTRUCTIONS =
-  'A sign-in can reach several workspaces, each with its own data and role. Call list_workspaces when the user names a workspace, client or organization, or when data they expect is missing, then pass that id as workspaceId on every call about it. Without workspaceId, tools act in the default workspace. A 403 with code workspace_access_denied means the workspaceId is not one this sign-in can reach; pick an id from list_workspaces.';
+  'A sign-in can reach several workspaces, each with its own data and role. Call list_workspaces when the user names a workspace, client or organization, or when data they expect is missing, then pass that id as workspaceId on every call about it. Without workspaceId, tools act in the default workspace. A 403 with code workspace_access_denied means the workspaceId is not one this sign-in can reach; pick an id from list_workspaces. A 403 with code permission_denied means this member\'s role lacks redreplier.write, which Admin and Editor hold: stop, do not retry, and tell the user a workspace admin has to change their role. A 403 with code subscription_required means the plan does not include API access or has lapsed; every tool fails until it is renewed. A 401 with code token_issuer_lost_access means the key is dead because its creator lost access; ask for a new key. A 401 with code oauth_account_not_found means the sign-in email has no RedReplier account; relay the message and ask the user to reconnect with the right email. A 429 means the rate limit was hit; wait for Retry-After and do not loop.';
 
 const resultSchema = (description: string) => ({
   result: z.unknown().describe(description),
@@ -221,7 +223,7 @@ function createMcpServer(apiClient?: RestClient): McpServer {
     {
       title: 'Add Website to Monitor',
       description:
-        'Add a website to monitor across Reddit, Hacker News, X, and Bluesky. The domain must be new to this account: a duplicate returns 400, and re-adding a domain removed with delete_website revives that record. description is the context every mention is scored against. Omit it and the server scrapes the URL to write one, spending one AI generation from the plan quota; if that scrape fails or the quota is exhausted the site is created with description null and its mentions go unscored (reason "Scoring skipped: website description missing"), so check the response and set one with update_website or analyze_website. Pass your own description to skip the scrape. Initial keywords are stored PENDING: list_websites or add_keywords promotes those that fit the plan; the rest stay PENDING when the current entitlement has no capacity. AI-suggested keywords are added in the background and show up on the website later. Returns 400 when the plan has no website slots left.',
+        'Add a website to monitor across Reddit, Hacker News, X, Bluesky, and Facebook. The domain must be new to this account: a duplicate returns 400, and re-adding a domain removed with delete_website revives that record. description is the context every mention is scored against. Omit it and the server scrapes the URL to write one, spending one AI generation from the plan quota; if that scrape fails or the quota is exhausted the site is created with description null and its mentions go unscored (reason "Scoring skipped: website description missing"), so check the response and set one with update_website or analyze_website. Pass your own description to skip the scrape. Initial keywords are stored PENDING: list_websites or add_keywords promotes those that fit the plan; the rest stay PENDING when the current entitlement has no capacity. AI-suggested keywords are added in the background and show up on the website later. Returns 400 when the plan has no website slots left.',
       inputSchema: {
         url: z.string().describe('Full website URL (e.g. "https://example.com")'),
         name: z.string().optional().describe('Display name for the website'),
@@ -521,7 +523,7 @@ function createMcpServer(apiClient?: RestClient): McpServer {
     {
       title: 'List Mentions',
       description:
-        "List mentions matched for this account across Reddit, Hacker News, X, and Bluesky, each AI-scored 0-100 with its source, matched keyword, status, content, and any generated relevanceReason and aiReplySuggestion. Two defaults hide rows: REJECTED mentions are excluded unless statuses names them, and mentions below the website's minimum score (30 by default) are hidden unless includeLowRelevance is true, even when scoreBuckets asks for LOW or VERY_LOW. Returns { mentions, total, limit, offset }; page with offset while offset < total. Sort RELEVANCE for the best leads, RECENT for what is new; from/to filter on ingestion time, not publish time. Use count_mentions for the number alone, explain_mention for one mention's reasoning, and update_mention_status to triage.",
+        "List mentions matched for this account across Reddit, Hacker News, X, Bluesky, and Facebook, each AI-scored 0-100 with its source, matched keyword, status, content, and any generated relevanceReason and aiReplySuggestion. Two defaults hide rows: REJECTED mentions are excluded unless statuses names them, and mentions below the website's minimum score (30 by default) are hidden unless includeLowRelevance is true, even when scoreBuckets asks for LOW or VERY_LOW. Returns { mentions, total, limit, offset }; page with offset while offset < total. Sort RELEVANCE for the best leads, RECENT for what is new; from/to filter on ingestion time, not publish time. Use count_mentions for the number alone, explain_mention for one mention's reasoning, and update_mention_status to triage.",
       inputSchema: {
         websiteId: z.string().optional().describe('Filter to one website (UUID)'),
         statuses: z
@@ -555,7 +557,7 @@ function createMcpServer(apiClient?: RestClient): McpServer {
           .array(MentionSource)
           .optional()
           .describe(
-            'Filter by source: REDDIT_POST, REDDIT_COMMENT, TWITTER (X), BLUESKY, HACKERNEWS',
+            'Filter by source: REDDIT_POST, REDDIT_COMMENT, TWITTER (X), BLUESKY, HACKERNEWS, FACEBOOK (posts outside groups), FACEBOOK_GROUP (posts in Facebook groups)',
           ),
         sort: MentionSort.optional().describe(
           'RELEVANCE (default, highest score first) or RECENT (newest first)',
@@ -579,7 +581,7 @@ function createMcpServer(apiClient?: RestClient): McpServer {
         offset: z.number().int().min(0).optional().default(0).describe('Pagination offset'),
       },
       outputSchema: resultSchema(
-        '{ mentions, total, limit, offset }: each mention has id, source, keyword, title, contentText, url, author, subreddit (Reddit only), status, relevanceScore, relevanceReason, aiReplySuggestion, tags, publishedAt, ingestedAt, reviewedAt.',
+        '{ mentions, total, limit, offset }: each mention has id, source, keyword, title, contentText, url, author, subreddit (the subreddit for Reddit, the group id for FACEBOOK_GROUP, otherwise null), status, relevanceScore, relevanceReason, aiReplySuggestion, tags, publishedAt, ingestedAt, reviewedAt.',
       ),
       annotations: {
         readOnlyHint: true,
@@ -635,7 +637,7 @@ function createMcpServer(apiClient?: RestClient): McpServer {
           .array(MentionSource)
           .optional()
           .describe(
-            'Filter by source: REDDIT_POST, REDDIT_COMMENT, TWITTER (X), BLUESKY, HACKERNEWS',
+            'Filter by source: REDDIT_POST, REDDIT_COMMENT, TWITTER (X), BLUESKY, HACKERNEWS, FACEBOOK (posts outside groups), FACEBOOK_GROUP (posts in Facebook groups)',
           ),
         from: z
           .string()

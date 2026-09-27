@@ -1,7 +1,7 @@
 {
   "name": "@redreplier/mcp-server",
   "version": "1.0.0",
-  "description": "RedReplier MCP Server — AI agent integration for Reddit, Hacker News, X, and Bluesky keyword monitoring, lead mentions, and alerts",
+  "description": "RedReplier MCP Server: AI agent integration for Reddit, Hacker News, X, Bluesky, and Facebook keyword monitoring, lead mentions, and alerts",
   "homepage": "https://redreplier.com",
   "repository": {
     "type": "git",

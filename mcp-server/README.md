@@ -1,10 +1,10 @@
 # @redreplier/mcp-server
 
-MCP (Model Context Protocol) server for RedReplier — give AI agents the ability to monitor Reddit, Hacker News, X, and Bluesky for keyword mentions, manage monitored websites and keywords, triage AI-scored lead mentions, and configure email alerts.
+MCP (Model Context Protocol) server for RedReplier — give AI agents the ability to monitor Reddit, Hacker News, X, Bluesky, and Facebook for keyword mentions, manage monitored websites and keywords, triage AI-scored lead mentions, and configure email alerts.
 
 ## What is RedReplier
 
-RedReplier watches Reddit, Hacker News, X, and Bluesky for mentions of your keywords, AI-scores each one for relevance (0-100), and surfaces the real leads. You register **websites**, attach **keywords** (a PENDING → ACTIVE billing lifecycle), review **mentions**, and set **alert** cadence.
+RedReplier watches Reddit, Hacker News, X, Bluesky, and Facebook for mentions of your keywords, AI-scores each one for relevance (0-100), and surfaces the real leads. You register **websites**, attach **keywords** (a PENDING → ACTIVE billing lifecycle), review **mentions**, and set **alert** cadence.
 
 ## Quick Start
 
@@ -83,7 +83,7 @@ An OAuth sign-in reaches every workspace the user belongs to, each with its own 
 | `enable_keyword` | Re-activate a disabled keyword (stays pending if the plan is full; never charges) |
 | `delete_keyword` | Delete a keyword and every mention it produced |
 | `keyword_change_usage` | Monthly keyword-edit allowance and usage |
-| `list_mentions` | List AI-scored mentions with rich filters |
+| `list_mentions` | List AI-scored mentions; filter by status, relevance bucket, minimum score, keyword, source, and ingestion date |
 | `count_mentions` | Count mentions matching filters |
 | `update_mention_status` | Approve / reject / reset a mention |
 | `explain_mention` | Get the AI relevance reasoning + tags for a mention |

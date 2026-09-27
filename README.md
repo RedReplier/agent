@@ -2,7 +2,7 @@
 
 [![smithery badge](https://smithery.ai/badge/tarasshyn/redreplier)](https://smithery.ai/servers/tarasshyn/redreplier)
 
-Give your AI agent the ability to monitor **Reddit, Hacker News, X, and Bluesky** for keyword mentions of your product — and triage the AI-scored leads — from a single command.
+Give your AI agent the ability to monitor **Reddit, Hacker News, X, Bluesky, and Facebook** for keyword mentions of your product — and triage the AI-scored leads — from a single command.
 
 **Works with:** Claude Code, Cursor, Windsurf, Codex, and any agent that supports skills.
 
@@ -33,8 +33,8 @@ npx skills add redreplier/agent
 Once installed, your AI agent can:
 
 - **Manage monitored websites** — add, update, AI-analyze, remove
-- **Manage keywords** — add, edit, enable/disable, activate within your plan
-- **Triage mentions** — list AI-scored mentions from Reddit, Hacker News, X, and Bluesky, filter by relevance / keyword / source / date, approve or reject leads
+- **Manage keywords** — add, edit, enable/disable, delete, activate within your plan
+- **Triage mentions** — list AI-scored mentions from Reddit, Hacker News, X, Bluesky, and Facebook, filter by relevance / minimum score / keyword / source / date, approve or reject leads
 - **Explain relevance** — see why a mention scored the way it did
 - **Configure alerts** — enable email digests and set the cadence
 
@@ -49,7 +49,7 @@ Agent: 3 mentions scoring 70+. Top: r/webdev "Looking for an example tool" (85) 
 
 ## Alternative: MCP
 
-For deeper integration with Claude Desktop, Cursor, or other MCP-compatible clients, use the RedReplier MCP server:
+For deeper integration with Claude Desktop, Cursor, or other MCP-compatible clients, use the RedReplier MCP server at `https://mcp.redreplier.com/mcp`. OAuth-capable clients need only the URL and sign in in the browser; that sign-in can reach every workspace the user belongs to. Clients without OAuth can send an API key:
 
 ```json
 {
