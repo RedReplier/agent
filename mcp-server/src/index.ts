@@ -172,15 +172,15 @@ function createMcpServer(apiClient?: RestClient): McpServer {
     {
       title: 'List Monitored Websites',
       description:
-        'List monitored websites and keyword statuses in the connected workspace. This also activates pending keywords that fit the existing plan, updates monitoring alerts, and queues public-network searches and ranking checks; it never charges. Use get_website to read one known website without activating keywords. Website and keyword IDs from this response are used by the other tools.',
+        'List monitored websites and their keyword statuses (PENDING, ACTIVE, DISABLED, SUSPENDED) in the connected workspace. Read-only: nothing is activated, changed or charged. Use get_website for one website when you already have its ID. Website and keyword IDs from this response are used by the other tools.',
       inputSchema: {},
       outputSchema: resultSchema(
         'Object with websites: monitored websites with IDs, URLs, names, descriptions and keyword statuses.',
       ),
       annotations: {
-        readOnlyHint: false,
+        readOnlyHint: true,
         destructiveHint: false,
-        openWorldHint: true,
+        openWorldHint: false,
       },
     },
     async (_args, client) => {
@@ -298,7 +298,7 @@ function createMcpServer(apiClient?: RestClient): McpServer {
     {
       title: 'Stop Monitoring Website',
       description:
-        'Stop monitoring a website (soft delete). The site and its keywords leave list_websites immediately and stop matching new mentions; there is no restore tool, but create_website with the same URL revives the record. Use this only when the whole site should go: use disable_keyword to pause one keyword and keep the site, and delete_keyword to erase one keyword and its mentions. Confirm with the user first and name the domain, not just the ID. Returns { deleted: true }; 404 if the ID is unknown to this account.',
+        'Stop monitoring a website (soft delete). The site and its keywords leave list_websites immediately and stop matching new mentions. Its active keywords free plan slots, so the oldest pending keywords on other websites that now fit may become active, which queues public-network searches and ranking checks. There is no restore tool, but create_website with the same URL revives the record. Use this only when the whole site should go: use disable_keyword to pause one keyword and keep the site, and delete_keyword to erase one keyword and its mentions. Confirm with the user first and name the domain, not just the ID. Returns { deleted: true }; 404 if the ID is unknown to this account.',
       inputSchema: {
         websiteId: z.string().describe('Monitored website ID (UUID)'),
       },
@@ -306,7 +306,7 @@ function createMcpServer(apiClient?: RestClient): McpServer {
       annotations: {
         readOnlyHint: false,
         destructiveHint: true,
-        openWorldHint: false,
+        openWorldHint: true,
       },
     },
     async ({ websiteId }, client) => {
@@ -420,7 +420,7 @@ function createMcpServer(apiClient?: RestClient): McpServer {
     {
       title: 'Disable Keyword',
       description:
-        'Set one keyword to DISABLED and stop matching new mentions. Keeps its stored mentions and synchronizes monitoring alerts. Use enable_keyword to resume monitoring within the current entitlement, or delete_keyword to permanently erase the keyword and its mentions. An already disabled keyword is returned unchanged. This tool does not charge, refund, or change the subscription.',
+        'Set one keyword to DISABLED and stop matching new mentions. Keeps its stored mentions and synchronizes monitoring alerts. Use enable_keyword to resume monitoring within the current entitlement, or delete_keyword to permanently erase the keyword and its mentions. Disabling an active keyword frees a plan slot, so the oldest pending keyword that now fits the plan may become active, which queues public-network searches and ranking checks. An already disabled keyword is returned unchanged. This tool does not charge, refund, or change the subscription.',
       inputSchema: {
         keywordId: z.string().describe('Keyword ID (UUID)'),
       },
@@ -428,7 +428,7 @@ function createMcpServer(apiClient?: RestClient): McpServer {
       annotations: {
         readOnlyHint: false,
         destructiveHint: true,
-        openWorldHint: false,
+        openWorldHint: true,
       },
     },
     async ({ keywordId }, client) => {
@@ -472,7 +472,7 @@ function createMcpServer(apiClient?: RestClient): McpServer {
     {
       title: 'Delete Keyword',
       description:
-        'Permanently delete one keyword in any status, together with every mention it produced. There is no undo and no restore: disable_keyword pauses a keyword and keeps its mentions, edit_keyword fixes a SUSPENDED value, and delete_website drops a whole site. Deleting an active keyword removes it from the active keyword count; this tool does not issue a refund or change the subscription. Confirm with the user first and name the keyword, not just the ID. Returns { deleted: true }; 404 if the ID is unknown to this account.',
+        'Permanently delete one keyword in any status, together with every mention it produced. There is no undo and no restore: disable_keyword pauses a keyword and keeps its mentions, edit_keyword fixes a SUSPENDED value, and delete_website drops a whole site. Deleting an active keyword frees a plan slot, so the oldest pending keyword that now fits the plan may become active, which queues public-network searches and ranking checks; this tool does not issue a refund or change the subscription. Confirm with the user first and name the keyword, not just the ID. Returns { deleted: true }; 404 if the ID is unknown to this account.',
       inputSchema: {
         keywordId: z.string().describe('Keyword ID (UUID)'),
       },
@@ -480,7 +480,7 @@ function createMcpServer(apiClient?: RestClient): McpServer {
       annotations: {
         readOnlyHint: false,
         destructiveHint: true,
-        openWorldHint: false,
+        openWorldHint: true,
       },
     },
     async ({ keywordId }, client) => {
