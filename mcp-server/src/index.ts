@@ -172,7 +172,7 @@ function createMcpServer(apiClient?: RestClient): McpServer {
     {
       title: 'List Monitored Websites',
       description:
-        'List monitored websites and their keyword statuses (PENDING, ACTIVE, DISABLED, SUSPENDED) in the connected workspace. Read-only: nothing is activated, changed or charged. Use get_website for one website when you already have its ID. Website and keyword IDs from this response are used by the other tools.',
+        'List monitored websites and their keyword statuses (PENDING, ACTIVE, DISABLED, SUSPENDED) in the connected workspace. Use get_website for one website when you already have its ID. Website and keyword IDs from this response are used by the other tools.',
       inputSchema: {},
       outputSchema: resultSchema(
         'Object with websites: monitored websites with IDs, URLs, names, descriptions and keyword statuses.',
@@ -524,7 +524,7 @@ function createMcpServer(apiClient?: RestClient): McpServer {
     {
       title: 'List Mentions',
       description:
-        "List mentions matched for this account across Reddit, Hacker News, X, Bluesky, and Facebook, each AI-scored 0-100 with its source, matched keyword, status, content, and any generated relevanceReason and aiReplySuggestion. Two defaults hide rows: REJECTED mentions are excluded unless statuses names them, and mentions below the website's minimum score (30 by default) are hidden unless includeLowRelevance is true, even when scoreBuckets asks for LOW or VERY_LOW. Returns { mentions, total, limit, offset }; page with offset while offset < total. Sort RELEVANCE for the best leads, RECENT for what is new; from/to filter on ingestion time, not publish time. Use count_mentions for the number alone, explain_mention for one mention's reasoning, and update_mention_status to triage.",
+        "List mentions matched for this account across Reddit, Hacker News, X, Bluesky, and Facebook, each AI-scored 0-100 with its source, matched keyword, status, content, and any generated relevanceReason and aiReplySuggestion. Two defaults hide rows: REJECTED mentions are excluded unless statuses names them, and mentions below the website's minimum score (30 by default) are hidden unless includeLowRelevance is true, even when scoreBuckets asks for LOW or VERY_LOW. Returns { mentions, total, limit, offset }; page with offset while offset < total. Sort RELEVANCE for the best leads, RECENT for what is new; from/to filter on ingestion time, not publish time. Each mention is a public post, with its text, URL and the author's public name or handle as shown on the source network; private Facebook groups are never read. Use count_mentions for the number alone, explain_mention for one mention's reasoning, and update_mention_status to triage.",
       inputSchema: {
         websiteId: z.string().optional().describe('Filter to one website (UUID)'),
         statuses: z
