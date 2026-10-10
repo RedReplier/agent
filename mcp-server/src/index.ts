@@ -5,7 +5,7 @@ import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
 import type { CallToolResult, ToolAnnotations } from '@modelcontextprotocol/sdk/types.js';
 import { z, type ZodRawShape, type ZodTypeAny } from 'zod';
-import { createServer, type IncomingMessage } from 'node:http';
+import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
 
 import { RestClient } from './rest-client.js';
 import { withoutSchemaDialect } from './schema-dialect.js';
@@ -796,6 +796,48 @@ const SSE_ACCEPT = 'application/json, text/event-stream';
 
 // The MCP SDK 406s unless Accept lists both types. `@hono/node-server` v1 rebuilds the
 // request from rawHeaders, so headers.accept alone is not enough.
+const MAX_BODY_BYTES = 4 * 1024 * 1024;
+
+type JsonRpcRequest = { id?: string | number | null; method?: string };
+
+const readJsonBody = (req: IncomingMessage): Promise<unknown> =>
+  new Promise((resolve, reject) => {
+    const chunks: Buffer[] = [];
+    let total = 0;
+    req.on('data', (chunk: Buffer) => {
+      total += chunk.length;
+      if (total > MAX_BODY_BYTES) {
+        reject(new Error('Request body too large'));
+        req.destroy();
+        return;
+      }
+      chunks.push(chunk);
+    });
+    req.on('end', () => {
+      try {
+        const text = Buffer.concat(chunks).toString('utf8');
+        resolve(text ? JSON.parse(text) : undefined);
+      } catch (error) {
+        reject(error);
+      }
+    });
+    req.on('error', reject);
+  });
+
+const sendJsonRpcError = (
+  res: ServerResponse,
+  status: number,
+  id: JsonRpcRequest['id'],
+  code: number,
+  message: string,
+) => {
+  res.writeHead(status, { 'Content-Type': 'application/json' });
+  res.end(JSON.stringify({ jsonrpc: '2.0', id: id ?? null, error: { code, message } }));
+};
+
+const isDiscoverRequest = (body: unknown): body is JsonRpcRequest =>
+  !!body && typeof body === 'object' && (body as JsonRpcRequest).method === 'server/discover';
+
 const forceStreamableAccept = (req: IncomingMessage) => {
   req.headers.accept = SSE_ACCEPT;
 
@@ -890,7 +932,20 @@ async function main() {
         const reqServer = createMcpServer(reqApi);
         await reqServer.connect(withoutSchemaDialect(transport));
         try {
-          await transport.handleRequest(req, res);
+          let parsedBody: unknown;
+          if (req.method === 'POST') {
+            try {
+              parsedBody = await readJsonBody(req);
+            } catch {
+              sendJsonRpcError(res, 400, null, -32700, 'Parse error');
+              return;
+            }
+            if (isDiscoverRequest(parsedBody)) {
+              sendJsonRpcError(res, 200, parsedBody.id, -32601, 'Method not found');
+              return;
+            }
+          }
+          await transport.handleRequest(req, res, parsedBody);
         } catch (err) {
           console.error('MCP handleRequest error:', err);
           if (!res.headersSent) {
