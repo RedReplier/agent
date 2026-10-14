@@ -454,8 +454,8 @@ function createMcpServer(apiClient?: RestClient): McpServer {
       ),
       annotations: {
         readOnlyHint: false,
-        destructiveHint: false,
-        openWorldHint: false,
+        destructiveHint: true,
+        openWorldHint: true,
       },
     },
     async ({ keywordId }, client) => {
@@ -682,7 +682,7 @@ function createMcpServer(apiClient?: RestClient): McpServer {
       outputSchema: resultSchema('The updated mention with its new status and reviewedAt (null when NEW).'),
       annotations: {
         readOnlyHint: false,
-        destructiveHint: false,
+        destructiveHint: true,
         openWorldHint: false,
       },
     },
