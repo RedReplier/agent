@@ -170,12 +170,12 @@ function createMcpServer(apiClient?: RestClient): McpServer {
   tool(
     'list_websites',
     {
-      title: 'List Monitored Websites',
+      title: 'List Your Websites',
       description:
-        'Read the monitored websites in this workspace with their URLs, names, descriptions, and keywords (ID, text, and status). Returns the stored records as they are; use get_website for one website when you have its ID. The website and keyword IDs are the inputs for the other tools.',
+        "List the user's own websites saved in their RedReplier account, each with its URL, name, description, and the keywords the user set up for it (ID, text, and status). Reads the account's saved settings only. Use get_website for one website when you have its ID. The website and keyword IDs are the inputs for the other tools.",
       inputSchema: {},
       outputSchema: resultSchema(
-        'Object with websites: monitored websites with IDs, URLs, names, descriptions and keyword statuses.',
+        "Object with websites: the user's saved websites with IDs, URLs, names, descriptions and keyword statuses.",
       ),
       annotations: {
         readOnlyHint: true,
