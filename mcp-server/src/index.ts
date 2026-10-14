@@ -172,7 +172,7 @@ function createMcpServer(apiClient?: RestClient): McpServer {
     {
       title: 'List Monitored Websites',
       description:
-        'List monitored websites and their keyword statuses (PENDING, ACTIVE, DISABLED, SUSPENDED) in the connected workspace. Use get_website for one website when you already have its ID. Website and keyword IDs from this response are used by the other tools. Read-only: it only reads the stored list and never activates keywords, starts searches, sends alerts or charges anything.',
+        'Read the monitored websites in this workspace with their URLs, names, descriptions, and keywords (ID, text, and status). Returns the stored records as they are; use get_website for one website when you have its ID. The website and keyword IDs are the inputs for the other tools.',
       inputSchema: {},
       outputSchema: resultSchema(
         'Object with websites: monitored websites with IDs, URLs, names, descriptions and keyword statuses.',
