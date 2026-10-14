@@ -222,9 +222,9 @@ function createMcpServer(apiClient?: RestClient): McpServer {
   tool(
     'create_website',
     {
-      title: 'Add Website to Monitor',
+      title: 'Add Your Website',
       description:
-        'Add a website to monitor across Reddit, Hacker News, X, Bluesky, and Facebook. The domain must be new to this account: a duplicate returns 400, and re-adding a domain removed with delete_website revives that record. description is the context every mention is scored against. Omit it and the server scrapes the URL to write one, spending one AI generation from the plan quota; if that scrape fails or the quota is exhausted the site is created with description null and its mentions go unscored (reason "Scoring skipped: website description missing"), so check the response and set one with update_website or analyze_website. Pass your own description to skip the scrape. Initial keywords are stored PENDING: list_websites or add_keywords promotes those that fit the plan; the rest stay PENDING when the current entitlement has no capacity. AI-suggested keywords are added in the background and show up on the website later. Returns 400 when the plan has no website slots left.',
+        'Add the user\'s own website to their RedReplier account so RedReplier can find public posts on Reddit, Hacker News, X, Bluesky, and Facebook that mention its keywords. The domain must be new to this account: a duplicate returns 400, and re-adding a domain removed with delete_website revives that record. description is the context every mention is scored against. Omit it and RedReplier reads the website\'s public homepage to write one, spending one AI generation from the plan quota; if that read fails or the quota is exhausted the site is created with description null and its mentions go unscored (reason "Scoring skipped: website description missing"), so check the response and set one with update_website or analyze_website. Pass your own description to skip that step. Initial keywords are saved as PENDING and stay PENDING until add_keywords or enable_keyword activates them within the plan. AI-suggested keywords are added in the background and show up on the website later. Returns 400 when the plan has no website slots left.',
       inputSchema: {
         url: z.string().describe('Full website URL (e.g. "https://example.com")'),
         name: z.string().optional().describe('Display name for the website'),
@@ -232,7 +232,7 @@ function createMcpServer(apiClient?: RestClient): McpServer {
           .array(z.string().max(255))
           .optional()
           .describe(
-            'Initial keywords, stored as PENDING; list_websites promotes those that fit the plan for free',
+            'Initial keywords, saved as PENDING; activate them with add_keywords or enable_keyword',
           ),
         description: z
           .string()
@@ -323,9 +323,9 @@ function createMcpServer(apiClient?: RestClient): McpServer {
     {
       title: 'Analyze Website',
       description:
-        'Scrape a URL and return an AI-written business description as { description }, without creating or changing any website. Use it to draft or preview the text before create_website or update_website, then pass the result as their description. Consumes one AI generation from the monthly quota unless a precomputed description already exists for that domain, and refunds it if generation fails. Returns 400 when the quota is exhausted or url is not a valid URL, and an error when the page has too little readable text.',
+        'Read the public homepage of the user\'s website and return an AI-written business description as { description }, without creating or changing any website. Use it to draft or preview the text before create_website or update_website, then pass the result as their description. Consumes one AI generation from the monthly quota unless a precomputed description already exists for that domain, and refunds it if generation fails. Returns 400 when the quota is exhausted or url is not a valid URL, and an error when the page has too little readable text.',
       inputSchema: {
-        url: z.string().describe('Full website URL to scrape (e.g. "https://example.com")'),
+        url: z.string().describe('Full URL of the user\'s website (e.g. "https://example.com")'),
       },
       outputSchema: resultSchema(
         '{ description }: the AI-written business description, ready to pass to create_website or update_website.',
@@ -522,9 +522,9 @@ function createMcpServer(apiClient?: RestClient): McpServer {
   tool(
     'list_mentions',
     {
-      title: 'List Mentions',
+      title: 'List Your Mentions',
       description:
-        "List mentions matched for this account across Reddit, Hacker News, X, Bluesky, and Facebook, each AI-scored 0-100 with its source, matched keyword, status, content, and any generated relevanceReason and aiReplySuggestion. Two defaults hide rows: REJECTED mentions are excluded unless statuses names them, and mentions below the website's minimum score (30 by default) are hidden unless includeLowRelevance is true, even when scoreBuckets asks for LOW or VERY_LOW. Returns { mentions, total, limit, offset }; page with offset while offset < total. Sort RELEVANCE for the best leads, RECENT for what is new; from/to filter on ingestion time, not publish time. Each mention is a public post, with its text, URL and the author's public name or handle as shown on the source network; private Facebook groups are never read. Use count_mentions for the number alone, explain_mention for one mention's reasoning, and update_mention_status to triage.",
+        "List the mentions RedReplier saved for the user's keywords: public posts on Reddit, Hacker News, X, Bluesky, and Facebook, each AI-scored 0-100 with its source, matched keyword, status, content, and any generated relevanceReason and aiReplySuggestion. Two defaults hide rows: REJECTED mentions are excluded unless statuses names them, and mentions below the website's minimum score (30 by default) are hidden unless includeLowRelevance is true, even when scoreBuckets asks for LOW or VERY_LOW. Returns { mentions, total, limit, offset }; page with offset while offset < total. Sort RELEVANCE for the best leads, RECENT for what is new; from/to filter on ingestion time, not publish time. Reads mentions already saved in the account; it does not search or contact any network. Each mention is a public post with its text, URL and the author's public handle as shown on that network; private Facebook groups are never read. Use count_mentions for the number alone, explain_mention for one mention's reasoning, and update_mention_status to triage.",
       inputSchema: {
         websiteId: z.string().optional().describe('Filter to one website (UUID)'),
         statuses: z
