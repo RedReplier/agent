@@ -1,0 +1,19 @@
+mcp-server/src/index.ts
+  s_edcf927bd7ff54::t_76a0171da71349 225,227,235,326,328,525,527
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "04c9983233bf5460cd1a1d17e1520fa1e6531afa",
+  "prompts": {},
+  "sessions": {
+    "s_edcf927bd7ff54": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b0026b7c-1571-4dd5-a431-9ec0618091e5",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Taras Shynkarenko <taras.shinkarenko@gmail.com>"
+    }
+  }
+}
