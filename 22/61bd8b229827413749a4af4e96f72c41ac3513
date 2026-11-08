@@ -1,0 +1,21 @@
+README.md
+  s_3e8181728daf1a::t_d0a8e9dda93e5a 3,5,8,11,37-215,249,251,272-289
+mcp-server/README.md
+  s_3e8181728daf1a::t_4a0246f6050fc9 71
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "2261bd8b229827413749a4af4e96f72c41ac3513",
+  "prompts": {},
+  "sessions": {
+    "s_3e8181728daf1a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "182ff6ac-b752-40aa-b47f-ca4e4b96eef4",
+        "model": "unknown"
+      },
+      "human_author": "Taras Shynkarenko <taras.shinkarenko@gmail.com>"
+    }
+  }
+}
