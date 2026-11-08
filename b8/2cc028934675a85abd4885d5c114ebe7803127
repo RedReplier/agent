@@ -1,0 +1,14 @@
+README.md
+  h_d76ceef5a88fa0 5-12
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b82cc028934675a85abd4885d5c114ebe7803127",
+  "prompts": {},
+  "humans": {
+    "h_d76ceef5a88fa0": {
+      "author": "Taras Shynkarenko <taras.shinkarenko@gmail.com>"
+    }
+  }
+}
