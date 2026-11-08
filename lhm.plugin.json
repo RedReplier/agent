@@ -16,5 +16,919 @@
     "social-listening",
     "mentions",
     "marketing"
+  ],
+  "tools": [
+    {
+      "name": "list_workspaces",
+      "title": "List Workspaces",
+      "description": "List the workspaces this sign-in can act in, across every organization the user belongs to. Returns { workspaces } with one entry per workspace: id, name, organization { id, name }, role { key, name }, permissions, isDefault and current. Call this when the user names a workspace, client or organization, or when data they expect is missing, then pass the matching id as workspaceId to every other tool. Without workspaceId, tools act in the workspace marked current. An API key belongs to one workspace, so it lists only that one. Takes no arguments.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {}
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "result": {
+            "description": "One entry per workspace with id, name, organization, role, permissions, isDefault and current. Pass id as workspaceId to other tools."
+          }
+        },
+        "additionalProperties": false
+      },
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "openWorldHint": false
+      },
+      "execution": {
+        "taskSupport": "forbidden"
+      }
+    },
+    {
+      "name": "list_websites",
+      "title": "List Your Websites",
+      "description": "List the user's own websites saved in their RedReplier account, each with its URL, name, description, and the keywords the user set up for it (ID, text, and status). Reads the account's saved settings only. Use get_website for one website when you have its ID. The website and keyword IDs are the inputs for the other tools.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "workspaceId": {
+            "type": "string",
+            "description": "Workspace to act in: an id from list_workspaces. Omit to use the default workspace. Use the same workspaceId for every call about the same workspace, since ids from one workspace do not exist in another"
+          }
+        },
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "result": {
+            "description": "Object with websites: the user's saved websites with IDs, URLs, names, descriptions and keyword statuses."
+          }
+        },
+        "additionalProperties": false
+      },
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "openWorldHint": false
+      },
+      "execution": {
+        "taskSupport": "forbidden"
+      }
+    },
+    {
+      "name": "get_website",
+      "title": "Get Monitored Website",
+      "description": "Get one monitored website by ID with its full keyword list and statuses (PENDING, ACTIVE, DISABLED, SUSPENDED). Use it to re-check keyword statuses after add_keywords or enable_keyword; use list_websites instead when you do not have the ID yet or want every site. websiteId comes from list_websites or create_website. Returns 404 when the website does not exist or belongs to another account, and 400 when websiteId is not a UUID.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "websiteId": {
+            "type": "string",
+            "description": "Monitored website ID (UUID) from list_websites"
+          },
+          "workspaceId": {
+            "type": "string",
+            "description": "Workspace to act in: an id from list_workspaces. Omit to use the default workspace. Use the same workspaceId for every call about the same workspace, since ids from one workspace do not exist in another"
+          }
+        },
+        "required": [
+          "websiteId"
+        ],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "result": {
+            "description": "The monitored website with its keyword list, each keyword carrying id, value, and status."
+          }
+        },
+        "additionalProperties": false
+      },
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "openWorldHint": false
+      },
+      "execution": {
+        "taskSupport": "forbidden"
+      }
+    },
+    {
+      "name": "create_website",
+      "title": "Add Your Website",
+      "description": "Add the user's own website to their RedReplier account so RedReplier can find public posts on Reddit, Hacker News, X, Bluesky, and Facebook that mention its keywords. The domain must be new to this account: a duplicate returns 400, and re-adding a domain removed with delete_website revives that record. description is the context every mention is scored against. Omit it and RedReplier reads the website's public homepage to write one, spending one AI generation from the plan quota; if that read fails or the quota is exhausted the site is created with description null and its mentions go unscored (reason \"Scoring skipped: website description missing\"), so check the response and set one with update_website or analyze_website. Pass your own description to skip that step. Initial keywords are saved as PENDING and stay PENDING until add_keywords or enable_keyword activates them within the plan. AI-suggested keywords are added in the background and show up on the website later. Returns 400 when the plan has no website slots left.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "url": {
+            "type": "string",
+            "description": "Full website URL (e.g. \"https://example.com\")"
+          },
+          "name": {
+            "type": "string",
+            "description": "Display name for the website"
+          },
+          "keywords": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "maxLength": 255
+            },
+            "description": "Initial keywords, saved as PENDING; activate them with add_keywords or enable_keyword"
+          },
+          "description": {
+            "type": "string",
+            "maxLength": 5000,
+            "description": "Product summary the AI scores every mention against; without it new mentions are not scored. Draft one with analyze_website"
+          },
+          "workspaceId": {
+            "type": "string",
+            "description": "Workspace to act in: an id from list_workspaces. Omit to use the default workspace. Use the same workspaceId for every call about the same workspace, since ids from one workspace do not exist in another"
+          }
+        },
+        "required": [
+          "url"
+        ],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "result": {
+            "description": "The created website with its id, domain, description, and keywords (initial ones PENDING)."
+          }
+        },
+        "additionalProperties": false
+      },
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "openWorldHint": true
+      },
+      "execution": {
+        "taskSupport": "forbidden"
+      }
+    },
+    {
+      "name": "update_website",
+      "title": "Update Monitored Website",
+      "description": "Update a monitored website's display name and/or description. Only the fields you pass change: omitted fields keep their value, and an empty description clears it. The description is the context the AI scores every new mention against, so keep it an accurate summary of the product; mentions already scored are not rescored. Use analyze_website to draft a description from the live site before saving it here. URL and keywords cannot change through this tool: use add_keywords, edit_keyword, or disable_keyword for keywords. Returns the updated website with its keyword list.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "websiteId": {
+            "type": "string",
+            "description": "Monitored website ID (UUID)"
+          },
+          "name": {
+            "type": "string",
+            "description": "New display name"
+          },
+          "description": {
+            "type": "string",
+            "maxLength": 5000,
+            "description": "New scoring context; an empty string clears it, omit to keep the current one"
+          },
+          "workspaceId": {
+            "type": "string",
+            "description": "Workspace to act in: an id from list_workspaces. Omit to use the default workspace. Use the same workspaceId for every call about the same workspace, since ids from one workspace do not exist in another"
+          }
+        },
+        "required": [
+          "websiteId"
+        ],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "result": {
+            "description": "The updated website with its name, description, and keyword list."
+          }
+        },
+        "additionalProperties": false
+      },
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": true,
+        "openWorldHint": false
+      },
+      "execution": {
+        "taskSupport": "forbidden"
+      }
+    },
+    {
+      "name": "delete_website",
+      "title": "Stop Monitoring Website",
+      "description": "Stop monitoring a website (soft delete). The site and its keywords leave list_websites immediately and stop matching new mentions. Its active keywords free plan slots, so the oldest pending keywords on other websites that now fit may become active, which queues public-network searches and ranking checks. There is no restore tool, but create_website with the same URL revives the record. Use this only when the whole site should go: use disable_keyword to pause one keyword and keep the site, and delete_keyword to erase one keyword and its mentions. Confirm with the user first and name the domain, not just the ID. Returns { deleted: true }; 404 if the ID is unknown to this account.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "websiteId": {
+            "type": "string",
+            "description": "Monitored website ID (UUID)"
+          },
+          "workspaceId": {
+            "type": "string",
+            "description": "Workspace to act in: an id from list_workspaces. Omit to use the default workspace. Use the same workspaceId for every call about the same workspace, since ids from one workspace do not exist in another"
+          }
+        },
+        "required": [
+          "websiteId"
+        ],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "result": {
+            "description": "{ deleted: true } once the website is soft-deleted."
+          }
+        },
+        "additionalProperties": false
+      },
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": true,
+        "openWorldHint": true
+      },
+      "execution": {
+        "taskSupport": "forbidden"
+      }
+    },
+    {
+      "name": "analyze_website",
+      "title": "Analyze Website",
+      "description": "Read the public homepage of the user's website and return an AI-written business description as { description }, without creating or changing any website. Use it to draft or preview the text before create_website or update_website, then pass the result as their description. Consumes one AI generation from the monthly quota unless a precomputed description already exists for that domain, and refunds it if generation fails. Returns 400 when the quota is exhausted or url is not a valid URL, and an error when the page has too little readable text.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "url": {
+            "type": "string",
+            "description": "Full URL of the user's website (e.g. \"https://example.com\")"
+          },
+          "workspaceId": {
+            "type": "string",
+            "description": "Workspace to act in: an id from list_workspaces. Omit to use the default workspace. Use the same workspaceId for every call about the same workspace, since ids from one workspace do not exist in another"
+          }
+        },
+        "required": [
+          "url"
+        ],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "result": {
+            "description": "{ description }: the AI-written business description, ready to pass to create_website or update_website."
+          }
+        },
+        "additionalProperties": false
+      },
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "openWorldHint": true
+      },
+      "execution": {
+        "taskSupport": "forbidden"
+      }
+    },
+    {
+      "name": "add_keywords",
+      "title": "Add Keywords",
+      "description": "Add keywords to a monitored website. Values are trimmed, lowercased and deduplicated; active values are skipped and disabled values may be proposed again. New keywords start pending, then those within the existing plan become active without a charge. Activation updates monitoring alerts and queues public-network searches and ranking checks. Keywords beyond the current entitlement stay pending. Returns the whole website with its updated keyword list. Use edit_keyword to change existing text.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "websiteId": {
+            "type": "string",
+            "description": "Monitored website ID (UUID)"
+          },
+          "keywords": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "maxLength": 255
+            },
+            "minItems": 1,
+            "description": "Keywords to add (e.g. [\"my product\", \"competitor name\"]); trimmed, lowercased, and de-duplicated, max 255 characters each"
+          },
+          "workspaceId": {
+            "type": "string",
+            "description": "Workspace to act in: an id from list_workspaces. Omit to use the default workspace. Use the same workspaceId for every call about the same workspace, since ids from one workspace do not exist in another"
+          }
+        },
+        "required": [
+          "websiteId",
+          "keywords"
+        ],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "result": {
+            "description": "The whole website with its full keyword list (id, value, status), including the new keywords as ACTIVE or PENDING."
+          }
+        },
+        "additionalProperties": false
+      },
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "openWorldHint": true
+      },
+      "execution": {
+        "taskSupport": "forbidden"
+      }
+    },
+    {
+      "name": "edit_keyword",
+      "title": "Edit Keyword",
+      "description": "Replace a keyword's text while keeping its ID. Edits are unlimited. The new value is re-graded and replaces its matching rules; an active keyword stays active, while other keywords become active only if the current plan has space. Activating a suspended keyword also queues public-network searches and ranking checks. Monitoring alerts are synchronized. Case-only changes are a no-op; duplicate values on the same website fail. Previous text and matching rules are overwritten.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "keywordId": {
+            "type": "string",
+            "description": "Keyword ID (UUID)"
+          },
+          "value": {
+            "type": "string",
+            "maxLength": 255,
+            "description": "New keyword text; trimmed and lowercased, must not duplicate another keyword on the same website"
+          },
+          "workspaceId": {
+            "type": "string",
+            "description": "Workspace to act in: an id from list_workspaces. Omit to use the default workspace. Use the same workspaceId for every call about the same workspace, since ids from one workspace do not exist in another"
+          }
+        },
+        "required": [
+          "keywordId",
+          "value"
+        ],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "result": {
+            "description": "The updated keyword with its new value and resulting status (ACTIVE or PENDING)."
+          }
+        },
+        "additionalProperties": false
+      },
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": true,
+        "openWorldHint": true
+      },
+      "execution": {
+        "taskSupport": "forbidden"
+      }
+    },
+    {
+      "name": "disable_keyword",
+      "title": "Disable Keyword",
+      "description": "Set one keyword to DISABLED and stop matching new mentions. Keeps its stored mentions and synchronizes monitoring alerts. Use enable_keyword to resume monitoring within the current entitlement, or delete_keyword to permanently erase the keyword and its mentions. Disabling an active keyword frees a plan slot, so the oldest pending keyword that now fits the plan may become active, which queues public-network searches and ranking checks. An already disabled keyword is returned unchanged. This tool does not charge, refund, or change the subscription.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "keywordId": {
+            "type": "string",
+            "description": "Keyword ID (UUID)"
+          },
+          "workspaceId": {
+            "type": "string",
+            "description": "Workspace to act in: an id from list_workspaces. Omit to use the default workspace. Use the same workspaceId for every call about the same workspace, since ids from one workspace do not exist in another"
+          }
+        },
+        "required": [
+          "keywordId"
+        ],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "result": {
+            "description": "The keyword with status DISABLED; existing mentions are retained."
+          }
+        },
+        "additionalProperties": false
+      },
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": true,
+        "openWorldHint": true
+      },
+      "execution": {
+        "taskSupport": "forbidden"
+      }
+    },
+    {
+      "name": "enable_keyword",
+      "title": "Enable Keyword",
+      "description": "Enable an existing keyword within the current plan. It becomes ACTIVE if there is capacity, otherwise PENDING; this tool never charges or upgrades a subscription. An already active keyword is returned unchanged. Monitoring alerts are synchronized when activated. No historical backfill runs on re-enable; new matches arrive through monitoring. Use add_keywords for a new keyword.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "keywordId": {
+            "type": "string",
+            "description": "Keyword ID (UUID)"
+          },
+          "workspaceId": {
+            "type": "string",
+            "description": "Workspace to act in: an id from list_workspaces. Omit to use the default workspace. Use the same workspaceId for every call about the same workspace, since ids from one workspace do not exist in another"
+          }
+        },
+        "required": [
+          "keywordId"
+        ],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "result": {
+            "description": "The keyword with status ACTIVE, or PENDING when the plan has no free slot for it."
+          }
+        },
+        "additionalProperties": false
+      },
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": true,
+        "openWorldHint": true
+      },
+      "execution": {
+        "taskSupport": "forbidden"
+      }
+    },
+    {
+      "name": "delete_keyword",
+      "title": "Delete Keyword",
+      "description": "Permanently delete one keyword in any status, together with every mention it produced. There is no undo and no restore: disable_keyword pauses a keyword and keeps its mentions, edit_keyword fixes a SUSPENDED value, and delete_website drops a whole site. Deleting an active keyword frees a plan slot, so the oldest pending keyword that now fits the plan may become active, which queues public-network searches and ranking checks; this tool does not issue a refund or change the subscription. Confirm with the user first and name the keyword, not just the ID. Returns { deleted: true }; 404 if the ID is unknown to this account.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "keywordId": {
+            "type": "string",
+            "description": "Keyword ID (UUID)"
+          },
+          "workspaceId": {
+            "type": "string",
+            "description": "Workspace to act in: an id from list_workspaces. Omit to use the default workspace. Use the same workspaceId for every call about the same workspace, since ids from one workspace do not exist in another"
+          }
+        },
+        "required": [
+          "keywordId"
+        ],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "result": {
+            "description": "{ deleted: true } once the keyword and its mentions are removed."
+          }
+        },
+        "additionalProperties": false
+      },
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": true,
+        "openWorldHint": true
+      },
+      "execution": {
+        "taskSupport": "forbidden"
+      }
+    },
+    {
+      "name": "keyword_change_usage",
+      "title": "Get Keyword Edit Allowance",
+      "description": "Get the monthly keyword-edit allowance for the account as { limit, used, remaining, unlimited }, where limit -1 means unlimited. Only edit_keyword ever counted toward it; add_keywords, disable_keyword, and enable_keyword never did. Every current plan reports unlimited, so there is no need to check it before edit_keyword; it remains for clients that budget edits. This reports editing allowance only; it does not change keyword capacity, sell a plan, or initiate payment.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "workspaceId": {
+            "type": "string",
+            "description": "Workspace to act in: an id from list_workspaces. Omit to use the default workspace. Use the same workspaceId for every call about the same workspace, since ids from one workspace do not exist in another"
+          }
+        },
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "result": {
+            "description": "{ limit, used, remaining, unlimited }; limit -1 and unlimited true mean edits are not metered."
+          }
+        },
+        "additionalProperties": false
+      },
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "openWorldHint": false
+      },
+      "execution": {
+        "taskSupport": "forbidden"
+      }
+    },
+    {
+      "name": "list_mentions",
+      "title": "List Your Mentions",
+      "description": "List the mentions RedReplier saved for the user's keywords: public posts on Reddit, Hacker News, X, Bluesky, and Facebook, each AI-scored 0-100 with its source, matched keyword, status, content, and any generated relevanceReason and aiReplySuggestion. Two defaults hide rows: REJECTED mentions are excluded unless statuses names them, and mentions below the website's minimum score (30 by default) are hidden unless includeLowRelevance is true, even when scoreBuckets asks for LOW or VERY_LOW. Returns { mentions, total, limit, offset }; page with offset while offset < total. Sort RELEVANCE for the best leads, RECENT for what is new; from/to filter on ingestion time, not publish time. Reads mentions already saved in the account; it does not search or contact any network. Each mention is a public post with its text, URL and the author's public handle as shown on that network; private Facebook groups are never read. Use count_mentions for the number alone, explain_mention for one mention's reasoning, and update_mention_status to triage.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "websiteId": {
+            "type": "string",
+            "description": "Filter to one website (UUID)"
+          },
+          "statuses": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "NEW",
+                "APPROVED",
+                "REJECTED"
+              ]
+            },
+            "description": "Filter by status (NEW, APPROVED, REJECTED); omit to get everything except REJECTED"
+          },
+          "scoreBuckets": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "VERY_LOW",
+                "LOW",
+                "MEDIUM",
+                "HIGH",
+                "VERY_HIGH"
+              ]
+            },
+            "description": "Relevance buckets, OR-combined: VERY_LOW (<10), LOW (10-29), MEDIUM (30-49), HIGH (50-74), VERY_HIGH (75+). LOW and VERY_LOW only show when includeLowRelevance is also true"
+          },
+          "includeLowRelevance": {
+            "type": "boolean",
+            "description": "Include mentions below the website minimum score (30 by default), hidden otherwise"
+          },
+          "minScore": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 100,
+            "description": "Only mentions scoring at least this (0-100); unscored mentions are left out. Stacks on the website minimum, so set includeLowRelevance to go below it"
+          },
+          "keywords": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Filter to mentions matched by these keyword values (case-insensitive exact match, as shown in list_websites)"
+          },
+          "sources": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "REDDIT_POST",
+                "REDDIT_COMMENT",
+                "TWITTER",
+                "BLUESKY",
+                "HACKERNEWS",
+                "FACEBOOK",
+                "FACEBOOK_GROUP"
+              ]
+            },
+            "description": "Filter by source: REDDIT_POST, REDDIT_COMMENT, TWITTER (X), BLUESKY, HACKERNEWS, FACEBOOK (posts outside groups), FACEBOOK_GROUP (posts in Facebook groups)"
+          },
+          "sort": {
+            "type": "string",
+            "enum": [
+              "RELEVANCE",
+              "RECENT"
+            ],
+            "description": "RELEVANCE (default, highest score first) or RECENT (newest first)"
+          },
+          "from": {
+            "type": "string",
+            "description": "Only mentions ingested at/after this ISO 8601 datetime"
+          },
+          "to": {
+            "type": "string",
+            "description": "Only mentions ingested at/before this ISO 8601 datetime"
+          },
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 500,
+            "default": 50,
+            "description": "Max results (1-500)"
+          },
+          "offset": {
+            "type": "integer",
+            "minimum": 0,
+            "default": 0,
+            "description": "Pagination offset"
+          },
+          "workspaceId": {
+            "type": "string",
+            "description": "Workspace to act in: an id from list_workspaces. Omit to use the default workspace. Use the same workspaceId for every call about the same workspace, since ids from one workspace do not exist in another"
+          }
+        },
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "result": {
+            "description": "{ mentions, total, limit, offset }: each mention has id, source, keyword, title, contentText, url, author, subreddit (the subreddit for Reddit, the group id for FACEBOOK_GROUP, otherwise null), status, relevanceScore, relevanceReason, aiReplySuggestion, tags, publishedAt, ingestedAt, reviewedAt."
+          }
+        },
+        "additionalProperties": false
+      },
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "openWorldHint": false
+      },
+      "execution": {
+        "taskSupport": "forbidden"
+      }
+    },
+    {
+      "name": "count_mentions",
+      "title": "Count Mentions",
+      "description": "Count mentions matching the same filters as list_mentions, returning { total } and no rows. The same defaults apply: REJECTED excluded unless statuses includes it, and scores below the website's minimum (30 by default) hidden unless includeLowRelevance is true. Use it for dashboards, to size a triage batch, or to decide whether paging list_mentions is worthwhile; list_mentions already returns total with its rows, so skip this when you fetch rows anyway. Takes no sort, limit, or offset.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "websiteId": {
+            "type": "string",
+            "description": "Filter to one website (UUID)"
+          },
+          "statuses": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "NEW",
+                "APPROVED",
+                "REJECTED"
+              ]
+            },
+            "description": "Filter by status (NEW, APPROVED, REJECTED); omit to count everything except REJECTED"
+          },
+          "scoreBuckets": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "VERY_LOW",
+                "LOW",
+                "MEDIUM",
+                "HIGH",
+                "VERY_HIGH"
+              ]
+            },
+            "description": "Relevance buckets, OR-combined: VERY_LOW (<10), LOW (10-29), MEDIUM (30-49), HIGH (50-74), VERY_HIGH (75+). LOW and VERY_LOW only count when includeLowRelevance is also true"
+          },
+          "includeLowRelevance": {
+            "type": "boolean",
+            "description": "Include mentions below the website minimum score (30 by default), hidden otherwise"
+          },
+          "minScore": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 100,
+            "description": "Only mentions scoring at least this (0-100); unscored mentions are left out. Stacks on the website minimum, so set includeLowRelevance to go below it"
+          },
+          "keywords": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Count only mentions matched by these keyword values (case-insensitive exact match)"
+          },
+          "sources": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "REDDIT_POST",
+                "REDDIT_COMMENT",
+                "TWITTER",
+                "BLUESKY",
+                "HACKERNEWS",
+                "FACEBOOK",
+                "FACEBOOK_GROUP"
+              ]
+            },
+            "description": "Filter by source: REDDIT_POST, REDDIT_COMMENT, TWITTER (X), BLUESKY, HACKERNEWS, FACEBOOK (posts outside groups), FACEBOOK_GROUP (posts in Facebook groups)"
+          },
+          "from": {
+            "type": "string",
+            "description": "Only mentions ingested at/after this ISO 8601 datetime"
+          },
+          "to": {
+            "type": "string",
+            "description": "Only mentions ingested at/before this ISO 8601 datetime"
+          },
+          "workspaceId": {
+            "type": "string",
+            "description": "Workspace to act in: an id from list_workspaces. Omit to use the default workspace. Use the same workspaceId for every call about the same workspace, since ids from one workspace do not exist in another"
+          }
+        },
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "result": {
+            "description": "{ total }: the number of mentions matching the filters after the default exclusions."
+          }
+        },
+        "additionalProperties": false
+      },
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "openWorldHint": false
+      },
+      "execution": {
+        "taskSupport": "forbidden"
+      }
+    },
+    {
+      "name": "update_mention_status",
+      "title": "Update Mention Status",
+      "description": "Set one mention's triage status. APPROVED marks it a real lead; REJECTED marks it noise and drops it from default list_mentions and count_mentions results (pass statuses to see it again); NEW returns it to the inbox. Fully reversible: any status can move to any other; reviewedAt is stamped when leaving NEW and cleared on NEW. Judge on the content and relevanceScore, calling explain_mention first when the score looks off; never approve a mention you have not read. mentionId comes from list_mentions. Returns the updated mention.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "mentionId": {
+            "type": "string",
+            "description": "Mention ID (UUID)"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "NEW",
+              "APPROVED",
+              "REJECTED"
+            ],
+            "description": "New status: APPROVED (real lead), REJECTED (noise, hidden from default lists), or NEW (back to inbox)"
+          },
+          "workspaceId": {
+            "type": "string",
+            "description": "Workspace to act in: an id from list_workspaces. Omit to use the default workspace. Use the same workspaceId for every call about the same workspace, since ids from one workspace do not exist in another"
+          }
+        },
+        "required": [
+          "mentionId",
+          "status"
+        ],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "result": {
+            "description": "The updated mention with its new status and reviewedAt (null when NEW)."
+          }
+        },
+        "additionalProperties": false
+      },
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": true,
+        "openWorldHint": false
+      },
+      "execution": {
+        "taskSupport": "forbidden"
+      }
+    },
+    {
+      "name": "explain_mention",
+      "title": "Explain Mention Score",
+      "description": "Get the AI relevance reasoning (relevanceReason), tags, and a drafted reply (aiReplySuggestion) for one mention, generating whatever is missing on first call and storing it, so later calls are instant reads. The website must have a description; without one the mention comes back unchanged. Use it when a score looks wrong or before update_mention_status on a borderline lead, not across every row of list_mentions, since generation is slow. Returns the full mention object, or null (not a 404) when the ID is unknown to this account.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "mentionId": {
+            "type": "string",
+            "description": "Mention ID (UUID) from list_mentions"
+          },
+          "workspaceId": {
+            "type": "string",
+            "description": "Workspace to act in: an id from list_workspaces. Omit to use the default workspace. Use the same workspaceId for every call about the same workspace, since ids from one workspace do not exist in another"
+          }
+        },
+        "required": [
+          "mentionId"
+        ],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "result": {
+            "description": "The full mention with relevanceReason, tags, and aiReplySuggestion filled in; null when the mention is not found."
+          }
+        },
+        "additionalProperties": false
+      },
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "openWorldHint": false
+      },
+      "execution": {
+        "taskSupport": "forbidden"
+      }
+    },
+    {
+      "name": "get_alert_settings",
+      "title": "Get Alert Settings",
+      "description": "Get the account's email-alert settings: enabled, cadenceMinutes (the digest interval in effect), minIntervalMinutes (the fastest cadence the plan allows), and availableCadences (the subset of 15, 30, 60, 120, 180, 240, 720, 1440 at or above that floor). cadenceMinutes is never reported below the floor, even if a faster value was saved before a plan downgrade. Call it before update_alert_settings to pick a value from availableCadences, and after it to confirm what applied. Read-only; the digests themselves are sent by the platform on that cadence.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "workspaceId": {
+            "type": "string",
+            "description": "Workspace to act in: an id from list_workspaces. Omit to use the default workspace. Use the same workspaceId for every call about the same workspace, since ids from one workspace do not exist in another"
+          }
+        },
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "result": {
+            "description": "{ enabled, cadenceMinutes, minIntervalMinutes, availableCadences }: the cadence in effect, the plan floor, and the cadences you may pick."
+          }
+        },
+        "additionalProperties": false
+      },
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "openWorldHint": false
+      },
+      "execution": {
+        "taskSupport": "forbidden"
+      }
+    },
+    {
+      "name": "update_alert_settings",
+      "title": "Update Alert Settings",
+      "description": "Turn mention email alerts on or off and set how often the digest is sent. enabled is required on every call. cadenceMinutes must be one of 15, 30, 60, 120, 180, 240, 720, 1440, otherwise 400 \"Invalid alert frequency for your plan\"; a value faster than the plan floor is silently raised to the floor. Both settings are replaced on every call: omitting cadenceMinutes resets it to the fastest cadence the plan allows, so pass the current value when only toggling enabled. Use get_alert_settings for availableCadences before, and to confirm the applied cadence after. Returns the resolved settings.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "enabled": {
+            "type": "boolean",
+            "description": "Turn email alerts on or off"
+          },
+          "cadenceMinutes": {
+            "type": "integer",
+            "description": "Digest interval in minutes: 15, 30, 60, 120, 180, 240, 720, or 1440; raised to the plan floor when faster than allowed, reset to the fastest allowed when omitted"
+          },
+          "workspaceId": {
+            "type": "string",
+            "description": "Workspace to act in: an id from list_workspaces. Omit to use the default workspace. Use the same workspaceId for every call about the same workspace, since ids from one workspace do not exist in another"
+          }
+        },
+        "required": [
+          "enabled"
+        ],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "result": {
+            "description": "The resolved settings after clamping: { enabled, cadenceMinutes, minIntervalMinutes, availableCadences }."
+          }
+        },
+        "additionalProperties": false
+      },
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": true,
+        "openWorldHint": false
+      },
+      "execution": {
+        "taskSupport": "forbidden"
+      }
+    }
   ]
 }
