@@ -1,8 +1,14 @@
 # RedReplier agent
 
-[![smithery badge](https://smithery.ai/badge/tarasshyn/redreplier)](https://smithery.ai/servers/tarasshyn/redreplier)
-
 Let your AI agent find leads in public conversations on Reddit, Hacker News, X, Bluesky and Facebook. RedReplier watches for your keywords and scores every mention 0 to 100 for relevance, so the agent can surface the real leads and skip the noise.
+
+Install the agent skill in any agent that supports skills (Claude Code, Cursor, Codex, Windsurf):
+
+```bash
+npx skills add RedReplier/agent
+```
+
+Or connect any MCP client to `https://mcp.redreplier.com/mcp` and sign in. More options are in [Pick your install](#pick-your-install).
 
 ## What this repo is
 
