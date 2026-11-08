@@ -1,0 +1,14 @@
+lhm.plugin.json
+  h_d76ceef5a88fa0 19-932
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "cbce44c801a5f30bd887fa9c6b6eeeffe41c3b6a",
+  "prompts": {},
+  "humans": {
+    "h_d76ceef5a88fa0": {
+      "author": "Taras Shynkarenko <taras.shinkarenko@gmail.com>"
+    }
+  }
+}
