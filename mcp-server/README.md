@@ -68,27 +68,7 @@ An OAuth sign-in reaches every workspace the user belongs to, each with its own 
 
 ## Available Tools
 
-| Tool | Description |
-|---|---|
-| `list_workspaces` | List the workspaces the sign-in can act in; pass an id as `workspaceId` to any other tool |
-| `list_websites` | List monitored websites with their keywords and statuses |
-| `get_website` | Get a single website with its keywords |
-| `create_website` | Add a website to monitor (optional initial keywords + description) |
-| `update_website` | Update a website's name or description |
-| `delete_website` | Stop monitoring a website |
-| `analyze_website` | AI-generate a description from a URL (preview/seed) |
-| `add_keywords` | Add keywords to a website (auto-activates within plan) |
-| `edit_keyword` | Change a keyword's text (re-graded) |
-| `disable_keyword` | Stop monitoring a keyword |
-| `enable_keyword` | Re-activate a disabled keyword (stays pending if the plan is full; never charges) |
-| `delete_keyword` | Delete a keyword and every mention it produced |
-| `keyword_change_usage` | Monthly keyword-edit allowance and usage |
-| `list_mentions` | List AI-scored mentions; filter by status, relevance bucket, minimum score, keyword, source, and ingestion date |
-| `count_mentions` | Count mentions matching filters |
-| `update_mention_status` | Approve / reject / reset a mention |
-| `explain_mention` | Get the AI relevance reasoning + tags for a mention |
-| `get_alert_settings` | Get email-alert settings (enabled, cadence, plan floor) |
-| `update_alert_settings` | Enable/disable alerts and set cadence |
+The full tool list, grouped by area and marked read-only or not, is in the [repository README](../README.md#tools).
 
 ## Local development
 
