@@ -1,6 +1,6 @@
 {
   "name": "redreplier",
-  "version": "1.0.0",
+  "version": "1.5.0",
   "description": "Monitor Reddit, Hacker News, X, Bluesky and Facebook for keywords from Gemini CLI",
   "contextFileName": "GEMINI.md",
   "mcpServers": {

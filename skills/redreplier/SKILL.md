@@ -5,7 +5,7 @@ description: >
   RedReplier API. Covers managing monitored websites, keyword lifecycle (add/edit/disable/enable/delete/activate
   within the plan), triaging AI-scored lead mentions (approve/reject, relevance reasoning), and email
   alert settings.
-last-updated: 2026-09-27
+last-updated: 2026-11-08
 allowed-tools: Bash(./scripts/redreplier.js:*)
 ---
 
@@ -22,7 +22,6 @@ Autonomously monitor Reddit, Hacker News, X, Bluesky, and Facebook for mentions 
 | Installation | How to update |
 |--------------|---------------|
 | CLI (`npx skills`) | `npx skills update` |
-| Claude Code plugin | `/plugin marketplace update` |
 | Cursor | Remote rules auto-sync from GitHub |
 | Manual | Pull latest from repo or re-copy `skills/redreplier/` |
 

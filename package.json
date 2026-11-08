@@ -1,7 +1,7 @@
 {
   "name": "@redreplier/agent",
-  "version": "1.0.0",
-  "description": "RedReplier agent: monitor Reddit, Hacker News, X, Bluesky, and Facebook for keyword mentions of your product from any AI agent",
+  "version": "1.5.0",
+  "description": "RedReplier agent integrations: the agent skill, the MCP server and the Gemini CLI extension for monitoring Reddit, Hacker News, X, Bluesky and Facebook for leads",
   "license": "MIT",
   "author": "RedReplier",
   "repository": {
@@ -19,10 +19,11 @@
     "monitoring",
     "redreplier",
     "mcp",
-    "claude",
     "cursor",
     "leads",
-    "social-listening"
+    "social-listening",
+    "gemini-cli",
+    "skills"
   ],
   "engines": {
     "node": ">=18.0.0"
