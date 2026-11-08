@@ -175,7 +175,7 @@ function createMcpServer(apiClient?: RestClient): McpServer {
     {
       title: 'List Your Websites',
       description:
-        "List the user's own websites saved in their RedReplier account, each with its URL, name, description, and the keywords the user set up for it (ID, text, and status). Reads the account's saved settings only. Use get_website for one website when you have its ID. The website and keyword IDs are the inputs for the other tools.",
+        "List the user's own websites saved in their RedReplier account, each with its URL, name, description, ignore list (ignoredKeywords), and the keywords the user set up for it (ID, text, and status). Reads the account's saved settings only. Use get_website for one website when you have its ID. The website and keyword IDs are the inputs for the other tools.",
       inputSchema: {},
       outputSchema: resultSchema(
         "Object with websites: the user's saved websites with IDs, URLs, names, descriptions and keyword statuses.",
@@ -200,12 +200,12 @@ function createMcpServer(apiClient?: RestClient): McpServer {
     {
       title: 'Get Monitored Website',
       description:
-        'Get one monitored website by ID with its full keyword list and statuses (PENDING, ACTIVE, DISABLED, SUSPENDED). Use it to re-check keyword statuses after add_keywords or enable_keyword; use list_websites instead when you do not have the ID yet or want every site. websiteId comes from list_websites or create_website. Returns 404 when the website does not exist or belongs to another account, and 400 when websiteId is not a UUID.',
+        'Get one monitored website by ID with its full keyword list and statuses (PENDING, ACTIVE, DISABLED, SUSPENDED), and its ignoredKeywords: the words and phrases whose mentions are hidden. Use it to re-check keyword statuses after add_keywords or enable_keyword; use list_websites instead when you do not have the ID yet or want every site. websiteId comes from list_websites or create_website. Returns 404 when the website does not exist or belongs to another account, and 400 when websiteId is not a UUID.',
       inputSchema: {
         websiteId: z.string().describe('Monitored website ID (UUID) from list_websites'),
       },
       outputSchema: resultSchema(
-        'The monitored website with its keyword list, each keyword carrying id, value, and status.',
+        'The monitored website with its ignoredKeywords and its keyword list, each keyword carrying id, value, and status.',
       ),
       annotations: {
         readOnlyHint: true,
@@ -268,7 +268,7 @@ function createMcpServer(apiClient?: RestClient): McpServer {
     {
       title: 'Update Monitored Website',
       description:
-        "Update a monitored website's display name and/or description. Only the fields you pass change: omitted fields keep their value, and an empty description clears it. The description is the context the AI scores every new mention against, so keep it an accurate summary of the product; mentions already scored are not rescored. Use analyze_website to draft a description from the live site before saving it here. URL and keywords cannot change through this tool: use add_keywords, edit_keyword, or disable_keyword for keywords. Returns the updated website with its keyword list.",
+        "Update a monitored website's display name, description, or ignore list. Only the fields you pass change: omitted fields keep their value, and an empty description clears it. The description is the context the AI scores every new mention against, so keep it an accurate summary of the product; mentions already scored are not rescored. Use analyze_website to draft a description from the live site before saving it here. ignoredKeywords replaces the whole ignore list (the same list as the RedReplier app's ignore settings): any mention whose title or text contains one of these words or phrases, ignoring case, disappears from list_mentions and count_mentions, and new matches are hidden as they arrive. To add or remove one entry, read the current ignoredKeywords with get_website, edit that list, and send all of it back; [] clears the list and brings every hidden mention back. Confirm with the user before removing entries. URL and keywords cannot change through this tool: use add_keywords, edit_keyword, or disable_keyword for keywords. Returns the updated website with its ignoredKeywords and keyword list.",
       inputSchema: {
         websiteId: z.string().describe('Monitored website ID (UUID)'),
         name: z.string().optional().describe('New display name'),
@@ -277,9 +277,16 @@ function createMcpServer(apiClient?: RestClient): McpServer {
           .max(5000)
           .optional()
           .describe('New scoring context; an empty string clears it, omit to keep the current one'),
+        ignoredKeywords: z
+          .array(z.string().max(255))
+          .max(100)
+          .optional()
+          .describe(
+            'The complete new ignore list, at most 100 words or phrases. Replaces the current list; [] clears it, omit to keep it',
+          ),
       },
       outputSchema: resultSchema(
-        'The updated website with its name, description, and keyword list.',
+        'The updated website with its name, description, ignoredKeywords, and keyword list.',
       ),
       annotations: {
         readOnlyHint: false,
@@ -527,7 +534,7 @@ function createMcpServer(apiClient?: RestClient): McpServer {
     {
       title: 'List Your Mentions',
       description:
-        "List the mentions RedReplier saved for the user's keywords: public posts on Reddit, Hacker News, X, Bluesky, and Facebook, each AI-scored 0-100 with its source, matched keyword, status, content, and any generated relevanceReason and aiReplySuggestion. Two defaults hide rows: REJECTED mentions are excluded unless statuses names them, and mentions below the website's minimum score (30 by default) are hidden unless includeLowRelevance is true, even when scoreBuckets asks for LOW or VERY_LOW. Returns { mentions, total, limit, offset }; page with offset while offset < total. Sort RELEVANCE for the best leads, RECENT for what is new; from/to filter on ingestion time, not publish time. Reads mentions already saved in the account; it does not search or contact any network. Each mention is a public post with its text, URL and the author's public handle as shown on that network; private Facebook groups are never read. Use count_mentions for the number alone, explain_mention for one mention's reasoning, and update_mention_status to triage.",
+        "List the mentions RedReplier saved for the user's keywords: public posts on Reddit, Hacker News, X, Bluesky, and Facebook, each AI-scored 0-100 with its source, matched keyword, status, content, and any generated relevanceReason and aiReplySuggestion. Two defaults hide rows: REJECTED mentions are excluded unless statuses names them, and mentions below the website's minimum score (30 by default) are hidden unless includeLowRelevance is true, even when scoreBuckets asks for LOW or VERY_LOW. Mentions containing a word on the website's ignore list (ignoredKeywords, changed with update_website) never appear. Returns { mentions, total, limit, offset }; page with offset while offset < total. Sort RELEVANCE for the best leads, RECENT for what is new; from/to filter on ingestion time, not publish time. Reads mentions already saved in the account; it does not search or contact any network. Each mention is a public post with its text, URL and the author's public handle as shown on that network; private Facebook groups are never read. Use count_mentions for the number alone, explain_mention for one mention's reasoning, and update_mention_status to triage.",
       inputSchema: {
         websiteId: z.string().optional().describe('Filter to one website (UUID)'),
         statuses: z

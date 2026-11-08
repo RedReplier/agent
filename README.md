@@ -171,7 +171,7 @@ Create an API token on [Settings > API Tokens](https://redreplier.com/api-tokens
 | `list_websites` | List monitored websites with their keywords and statuses | No |
 | `get_website` | Get one website with its keywords | No |
 | `create_website` | Add a website to monitor, with optional keywords and description | Yes |
-| `update_website` | Change a website's name or description | Yes |
+| `update_website` | Change a website's name, description or ignore list | Yes |
 | `delete_website` | Stop monitoring a website | Yes |
 | `analyze_website` | Write a description of a website from its URL with AI | Yes |
 
