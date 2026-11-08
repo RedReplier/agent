@@ -1,0 +1,20 @@
+{
+  "identifier": "redreplier",
+  "name": "RedReplier",
+  "version": "1.5.0",
+  "description": "Find leads in public conversations on Reddit, Hacker News, X, Bluesky and Facebook. RedReplier watches your keywords, scores every mention 0 to 100 for relevance, and lets the agent triage mentions, explain scores, draft replies and manage alerts. Sign in with OAuth or an API key.",
+  "author": "RedReplier",
+  "authorUrl": "https://redreplier.com",
+  "homepage": "https://redreplier.com/features/agents",
+  "cloudEndpoint": "https://mcp.redreplier.com/mcp",
+  "category": "business",
+  "icon": "https://raw.githubusercontent.com/RedReplier/agent/main/assets/icon.svg",
+  "tags": [
+    "reddit",
+    "hacker-news",
+    "lead-generation",
+    "social-listening",
+    "mentions",
+    "marketing"
+  ]
+}
