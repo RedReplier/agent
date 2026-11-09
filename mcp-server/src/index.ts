@@ -10,6 +10,7 @@ import { createServer, type IncomingMessage, type ServerResponse } from 'node:ht
 
 import { RestClient } from './rest-client.js';
 import { withoutSchemaDialect } from './schema-dialect.js';
+import { isSetupPageRequest, sendSetupPage, type SetupPageConfig } from './setup-page.js';
 import {
   oauthConfigFromEnv,
   handleProtectedResourceMetadata,
@@ -96,6 +97,18 @@ const SERVER_INSTRUCTIONS =
 
 const SERVER_DESCRIPTION =
   'Find and triage public conversations on Reddit, Hacker News, X, Bluesky and Facebook that mention your product. An agent can add the websites to monitor and their keywords, list and count the AI-scored mentions, read why a mention scored as it did with a drafted reply, mark mentions as leads or noise, and set how often email alerts arrive.';
+
+const SETUP_PAGE: SetupPageConfig = {
+  key: 'redreplier',
+  title: 'RedReplier',
+  description: SERVER_DESCRIPTION,
+  mcpUrl: 'https://mcp.redreplier.com/mcp',
+  websiteUrl: 'https://redreplier.com/features/agents',
+  repoUrl: 'https://github.com/RedReplier/agent',
+  iconUrl: 'https://raw.githubusercontent.com/RedReplier/agent/main/assets/icon.svg',
+  apiTokensUrl: 'https://redreplier.com/api-tokens',
+  apiKeyExample: 'redreplier_your_key',
+};
 
 const resultSchema = (result: ZodTypeAny) => ({ result });
 
@@ -1070,6 +1083,11 @@ async function main() {
       }
 
       if (req.url === '/mcp') {
+        if (isSetupPageRequest(req)) {
+          sendSetupPage(SETUP_PAGE, req, res);
+          return;
+        }
+
         // Extract Bearer token from the incoming request
         const authHeader = req.headers.authorization ?? '';
         const bearerToken = authHeader.startsWith('Bearer ')
