@@ -99,124 +99,136 @@ const SERVER_DESCRIPTION =
 
 const resultSchema = (result: ZodTypeAny) => ({ result });
 
-const isoDateTime = z.string().nullable().optional();
+const isoDateTime = z.string().nullable();
 
 const workspaceOutput = z
   .object({
-    id: z.string().describe('Pass as workspaceId to other tools'),
-    name: z.string(),
-    organization: z.object({ id: z.string(), name: z.string() }).passthrough(),
-    role: z.object({ key: z.string(), name: z.string() }).passthrough(),
-    permissions: z.array(z.string()),
-    isDefault: z.boolean(),
-    current: z.boolean().describe('True for the workspace this call landed in'),
+    id: z.string().describe('Workspace ID; pass it as workspaceId to other tools'),
+    name: z.string().describe('Workspace name as shown in RedReplier'),
+    organization: z
+      .object({
+        id: z.string().describe('Organization ID'),
+        name: z.string().describe('Organization name'),
+      })
+      .passthrough()
+      .describe('Organization that owns the workspace'),
+    role: z
+      .object({
+        key: z.string().describe('Stable role identifier'),
+        name: z.string().describe('Role name as shown in RedReplier'),
+      })
+      .passthrough()
+      .describe("This member's role in the workspace"),
+    permissions: z
+      .array(z.string())
+      .describe('What this member may do here; write tools need redreplier.write'),
+    isDefault: z.boolean().describe('True for the workspace tools use when workspaceId is omitted'),
+    current: z.boolean().describe('True for the workspace this call ran in'),
   })
   .passthrough();
 
 const keywordOutput = z
   .object({
     id: z.string().describe('Keyword ID for edit_keyword, enable_keyword, disable_keyword and delete_keyword'),
-    websiteId: z.string(),
+    websiteId: z.string().describe('Website this keyword belongs to'),
     value: z.string().describe('Lowercased keyword text, the value list_mentions filters on'),
     status: z
       .string()
       .describe('PENDING (saved, not monitored until the plan covers it), ACTIVE, DISABLED or SUSPENDED'),
-    createdAt: isoDateTime,
-    updatedAt: isoDateTime,
+    createdAt: isoDateTime.describe('When the keyword was added, ISO 8601'),
+    updatedAt: isoDateTime.describe('When the keyword last changed, ISO 8601'),
   })
   .passthrough();
 
 const websiteOutput = z
   .object({
     id: z.string().describe('Website ID for the other tools'),
-    accountGroupId: z.string().optional(),
-    domain: z.string(),
-    url: z.string(),
-    name: z.string().nullable().optional(),
+    accountGroupId: z.string().describe('Workspace the website belongs to'),
+    domain: z.string().describe('Domain taken from url; identifies the site in this account'),
+    url: z.string().describe('Website address as saved'),
+    name: z.string().nullable().describe('Display name; null when none was set'),
     description: z
       .string()
       .nullable()
-      .optional()
       .describe('Context every new mention is scored against; null means new mentions go unscored'),
     ignoredKeywords: z
       .array(z.string())
       .describe('Lowercased words and phrases; mentions containing one are hidden'),
-    createdAt: isoDateTime,
-    updatedAt: isoDateTime,
-    keywords: z.array(keywordOutput),
+    createdAt: isoDateTime.describe('When the website was added, ISO 8601'),
+    updatedAt: isoDateTime.describe('When the website last changed, ISO 8601'),
+    keywords: z.array(keywordOutput).describe('Every keyword on the website, in any status'),
   })
   .passthrough();
 
 const mentionOutput = z
   .object({
     id: z.string().describe('Mention ID for update_mention_status and explain_mention'),
-    websiteId: z.string(),
+    websiteId: z.string().describe('Website whose keyword matched'),
     source: z
       .string()
       .describe('REDDIT_POST, REDDIT_COMMENT, TWITTER, BLUESKY, HACKERNEWS, FACEBOOK or FACEBOOK_GROUP'),
-    keyword: z.string().nullable().optional().describe('The monitored keyword this conversation matched'),
-    title: z.string().nullable().optional(),
-    contentText: z.string().nullable().optional(),
+    keyword: z.string().nullable().describe('The monitored keyword this conversation matched'),
+    title: z.string().nullable().describe('Post title; null when the post has none'),
+    contentText: z.string().nullable().describe('Text of the post or comment'),
     url: z
       .string()
       .nullable()
-      .optional()
       .describe('Link to the conversation; null when the platform gives no public link'),
-    author: z.string().nullable().optional().describe("Author's public handle on that network"),
+    author: z.string().nullable().describe("Author's public handle on that network"),
     subreddit: z
       .string()
       .nullable()
-      .optional()
       .describe('The subreddit on Reddit, the group id on FACEBOOK_GROUP, otherwise null'),
-    status: z.string().describe('NEW, APPROVED or REJECTED'),
+    status: z.string().describe('Triage status: NEW, APPROVED or REJECTED'),
     relevanceScore: z
       .number()
       .nullable()
-      .optional()
       .describe('AI score from 0 to 100, higher means more worth a reply; null until scored'),
-    relevanceReason: z.string().nullable().optional().describe('Why the scorer chose that score'),
+    relevanceReason: z.string().nullable().describe('Why the scorer chose that score; null until generated'),
     aiReplySuggestion: z
       .string()
       .nullable()
-      .optional()
-      .describe('Draft reply for a human to review before posting'),
-    tags: z.array(z.string()).optional(),
-    publishedAt: isoDateTime,
-    ingestedAt: isoDateTime,
-    reviewedAt: isoDateTime,
-    createdAt: isoDateTime,
-    updatedAt: isoDateTime,
+      .describe('Draft reply for a human to review before posting; null until generated'),
+    tags: z.array(z.string()).describe('Tags the AI attached when explaining the mention'),
+    publishedAt: isoDateTime.describe('When the author posted it, ISO 8601; null when the network gives no date'),
+    ingestedAt: isoDateTime.describe('When RedReplier saved it, ISO 8601; the from and to filters use this'),
+    reviewedAt: isoDateTime.describe('When it was last set to APPROVED or REJECTED; null while NEW'),
+    createdAt: isoDateTime.describe('Record creation time, ISO 8601'),
+    updatedAt: isoDateTime.describe('Record update time, ISO 8601'),
   })
   .passthrough();
 
-const deletedOutput = z.object({ deleted: z.boolean() }).passthrough();
+const deletedOutput = z
+  .object({
+    deleted: z.boolean().describe('Always true on success; a failed delete returns an error instead'),
+  })
+  .passthrough();
 
 const alertSettingsOutput = z
   .object({
-    enabled: z.boolean(),
+    enabled: z.boolean().describe('Whether mention digest emails are sent'),
     cadenceMinutes: z.number().int().describe('Digest interval in effect, in minutes'),
-    minIntervalMinutes: z.number().int().optional().describe('Fastest cadence the plan allows'),
+    minIntervalMinutes: z.number().int().describe('Fastest cadence the plan allows, in minutes'),
     availableCadences: z
       .array(z.number().int())
-      .optional()
       .describe('Cadences, in minutes, that update_alert_settings accepts on this plan'),
   })
   .passthrough();
 
 const mentionStatusDescription =
-  'Triage statuses to include: NEW (not reviewed yet), APPROVED (marked a real lead), REJECTED (marked noise). Omit to include NEW and APPROVED; REJECTED mentions appear only when listed here';
+  'Which triage states to include. NEW means nobody has reviewed the mention yet, APPROVED means someone marked it a real lead, REJECTED means someone marked it noise. Omit to see new and approved mentions; rejected ones show only when you ask for them';
 
 const scoreBucketsDescription =
-  'Relevance score ranges to include, OR-combined: VERY_LOW is below 10, LOW 10-29, MEDIUM 30-49, HIGH 50-74, VERY_HIGH 75 and up. Omit for every range. LOW and VERY_LOW only return rows when includeLowRelevance is also true';
+  'Score bands to include, combined with OR. Each band covers a range of the 0-100 relevance score: VERY_LOW under 10, LOW 10-29, MEDIUM 30-49, HIGH 50-74, VERY_HIGH 75 and up. Omit for every band. The two lowest bands return rows only with includeLowRelevance set';
 
 const includeLowRelevanceDescription =
   "Also include mentions scoring below the website's minimum score (30 by default). Omit or false to hide them";
 
 const minScoreDescription =
-  "Lowest relevance score to include; unscored mentions are left out once this is set. It stacks on the website's minimum score, so set includeLowRelevance to go below that. Omit for no extra floor";
+  "Relevance score a mention needs to be included, e.g. 70 for strong leads only. Setting it also drops mentions that have no score yet. It adds to the website's own minimum score rather than replacing it, so pair it with includeLowRelevance to look below that. Omit for no extra cutoff";
 
 const sourcesDescription =
-  'Networks to include: REDDIT_POST, REDDIT_COMMENT, TWITTER (X), BLUESKY, HACKERNEWS, FACEBOOK (posts outside groups), FACEBOOK_GROUP (posts in Facebook groups). Omit for every network';
+  'Which networks the conversations come from. Reddit splits into posts and comments, TWITTER is X, FACEBOOK is public pages and profiles, and FACEBOOK_GROUP is posts inside Facebook groups. Omit for every network';
 
 const fromDescription =
   'Only mentions RedReplier saved at or after this ISO 8601 datetime (ingestion time, not the post date). Omit for no lower bound';
@@ -225,7 +237,7 @@ const toDescription =
   'Only mentions RedReplier saved at or before this ISO 8601 datetime (ingestion time, not the post date). Omit for no upper bound';
 
 const mentionWebsiteIdDescription =
-  'Website ID from list_websites to limit results to that site. Omit to cover every website in the workspace';
+  'Website whose mentions to read, by its id from list_websites. Omit to cover every website in the workspace';
 
 function toolResult(data: unknown) {
   return {
@@ -372,7 +384,7 @@ function createMcpServer(apiClient?: RestClient): McpServer {
     {
       title: 'Add Your Website',
       description:
-        'Add the user\'s own website to their RedReplier account so RedReplier can find public posts on Reddit, Hacker News, X, Bluesky, and Facebook that mention its keywords. The domain must be new to this account: a duplicate returns 400, and re-adding a domain removed with delete_website revives that record. description is the context every mention is scored against. Omit it and RedReplier reads the website\'s public homepage to write one, spending one AI generation from the plan quota; if that read fails or the quota is exhausted the site is created with description null and its mentions go unscored (reason "Scoring skipped: website description missing"), so check the response and set one with update_website or analyze_website. Pass your own description to skip that step. Initial keywords are saved as PENDING and stay PENDING until add_keywords or enable_keyword activates them within the plan. AI-suggested keywords are added in the background and show up on the website later. Returns 400 when the plan has no website slots left.',
+        'Add the user\'s own website to their RedReplier account so RedReplier can find public posts on Reddit, Hacker News, X, Bluesky, and Facebook that mention its keywords. The domain must be new to this account: a duplicate returns 400, and re-adding a domain removed with delete_website revives that record. description is the context every mention is scored against. Omit it and RedReplier reads the website\'s public homepage to write one, spending one AI generation from the plan quota; if that read fails or the quota is exhausted the site is created with description null and its mentions go unscored (reason "Scoring skipped: website description missing"), so check the response and set one with update_website or analyze_website. Pass your own description to skip that step. Returns the new website with its id, domain, description, ignoredKeywords and keywords. Initial keywords are saved as PENDING and stay PENDING until add_keywords or enable_keyword activates them within the plan. AI-suggested keywords are added in the background and show up on the website later. Returns 400 when the plan has no website slots left.',
       inputSchema: {
         url: z
           .string()
@@ -438,7 +450,7 @@ function createMcpServer(apiClient?: RestClient): McpServer {
           .max(100)
           .optional()
           .describe(
-            'The complete new ignore list of words or phrases. Replaces the current list; [] clears it, omit to keep it',
+            'Words or phrases whose mentions to hide, e.g. ["hiring", "job post"]. This becomes the whole ignore list, replacing the old one, so include every entry to keep. [] clears it; omit to keep the current list',
           ),
       },
       outputSchema: resultSchema(websiteOutput),
@@ -461,9 +473,9 @@ function createMcpServer(apiClient?: RestClient): McpServer {
   tool(
     'delete_website',
     {
-      title: 'Delete Monitored Website',
+      title: 'Remove Monitored Website',
       description:
-        'Stop monitoring a website (soft delete). The site and its keywords leave list_websites immediately and stop matching new mentions. Its active keywords free plan slots, so the oldest pending keywords on other websites that now fit may become active, which queues public-network searches and ranking checks. There is no restore tool, but create_website with the same URL revives the record. Use this only when the whole site should go: use disable_keyword to pause one keyword and keep the site, and delete_keyword to erase one keyword and its mentions. Confirm with the user first and name the domain, not just the ID. Returns { deleted: true }; 404 if the ID is unknown to this account.',
+        'Remove a website from monitoring. This is a soft delete: the site and its keywords leave list_websites immediately and stop matching new mentions. Its active keywords free plan slots, so the oldest pending keywords on other websites that now fit may become active, which queues public-network searches and ranking checks. There is no restore tool, but create_website with the same URL revives the record. Use this only when the whole site should go: use disable_keyword to pause one keyword and keep the site, and delete_keyword to erase one keyword and its mentions. Confirm with the user first and name the domain, not just the ID. Returns { deleted: true }; 404 if the ID is unknown to this account.',
       inputSchema: {
         websiteId: z
           .string()
@@ -576,7 +588,7 @@ function createMcpServer(apiClient?: RestClient): McpServer {
           .string()
           .min(1)
           .max(255)
-          .describe('New keyword text; stored trimmed and lowercased, and must not duplicate another keyword on the same website'),
+          .describe('The new word or phrase to look for, e.g. "acme crm". RedReplier trims and lowercases it. Another keyword on the same website with the same text makes the call fail'),
       },
       outputSchema: resultSchema(keywordOutput),
       annotations: {
@@ -634,7 +646,7 @@ function createMcpServer(apiClient?: RestClient): McpServer {
         keywordId: z
           .string()
           .uuid()
-          .describe('ID of a DISABLED or PENDING keyword to turn on, from the keywords list in list_websites or get_website (the id field, not the keyword text)'),
+          .describe('Keyword to turn back on, by its id from the keywords list in list_websites or get_website, not its text'),
       },
       outputSchema: resultSchema(keywordOutput),
       annotations: {
@@ -747,14 +759,14 @@ function createMcpServer(apiClient?: RestClient): McpServer {
           .max(500)
           .optional()
           .default(50)
-          .describe('How many mentions to return in this page'),
+          .describe('Page size: how many mentions to return in this call'),
         offset: z
           .number()
           .int()
           .min(0)
           .optional()
           .default(0)
-          .describe('How many matching mentions to skip; add limit to it to fetch the next page while it stays below total'),
+          .describe('How many matching mentions to skip, for reading the next page: add limit to it after each call and stop once it reaches total. Omit to start at the first mention'),
       },
       outputSchema: resultSchema(
         z
@@ -839,7 +851,7 @@ function createMcpServer(apiClient?: RestClient): McpServer {
       inputSchema: {
         mentionId: z.string().uuid().describe('ID of the mention to triage, from list_mentions'),
         status: MentionStatus.describe(
-          'Triage verdict: APPROVED marks a real lead, REJECTED marks noise and hides it from default lists, NEW puts it back in the inbox',
+          'Your verdict on the mention. APPROVED records it as a real lead, REJECTED records it as noise and hides it from default lists, NEW puts it back to unreviewed',
         ),
       },
       outputSchema: resultSchema(mentionOutput),
@@ -868,7 +880,7 @@ function createMcpServer(apiClient?: RestClient): McpServer {
       description:
         'Get the AI relevance reasoning (relevanceReason), tags, and a drafted reply (aiReplySuggestion) for one mention, generating whatever is missing on first call and storing it, so later calls are instant reads. The website must have a description; without one the mention comes back unchanged. Use it when a score looks wrong or before update_mention_status on a borderline lead, not across every row of list_mentions, since generation is slow. Returns the full mention object, or null (not a 404) when the ID is unknown to this account.',
       inputSchema: {
-        mentionId: z.string().uuid().describe('ID of the mention to explain, from list_mentions'),
+        mentionId: z.string().uuid().describe('Mention to explain, by its id from list_mentions'),
       },
       outputSchema: resultSchema(
         mentionOutput
@@ -927,7 +939,7 @@ function createMcpServer(apiClient?: RestClient): McpServer {
         cadenceMinutes: AlertCadenceMinutes
           .optional()
           .describe(
-            'Minutes between digest emails, e.g. 60 for hourly or 1440 for daily. Pick one from availableCadences in get_alert_settings, since a value faster than the plan allows is raised to the plan floor. Omit to reset to the fastest cadence the plan allows',
+            'How often digest emails go out, in minutes, e.g. 60 for hourly or 1440 for daily. Use a value from availableCadences in get_alert_settings; anything faster than the plan allows is raised to the plan\'s fastest. Omit to reset to the plan\'s fastest cadence',
           ),
       },
       outputSchema: resultSchema(alertSettingsOutput),
