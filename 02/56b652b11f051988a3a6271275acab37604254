@@ -1,0 +1,33 @@
+README.md
+  s_b64cca8c850e97::t_387f75ef4731ea 235
+gemini-extension.json
+  s_b64cca8c850e97::t_a80ec276b61221 3
+lhm.plugin.json
+  s_b64cca8c850e97::t_0efe9b9b07c9da 4,831,853
+mcp-server/package.json
+  s_b64cca8c850e97::t_429c4d5c286f92 3
+mcp-server/src/index.ts
+  s_b64cca8c850e97::t_8502ff94bba10d 894,899
+package.json
+  s_b64cca8c850e97::t_994d2cb33f70ca 3
+skills/redreplier/SKILL.md
+  s_b64cca8c850e97::t_6deab7448d3c8f 8,75,85,88,129,134,139,163,216-217
+skills/redreplier/scripts/redreplier.js
+  s_b64cca8c850e97::t_7cbfc4564a92d6 131-144,215,225-235,237
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "0256b652b11f051988a3a6271275acab37604254",
+  "prompts": {},
+  "sessions": {
+    "s_b64cca8c850e97": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f6229abe-395f-49a3-957a-9dad3afc6457",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Taras Shynkarenko <taras.shinkarenko@gmail.com>"
+    }
+  }
+}
