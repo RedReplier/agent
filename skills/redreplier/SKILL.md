@@ -5,7 +5,7 @@ description: >
   RedReplier API. Covers managing monitored websites, keyword lifecycle (add/edit/disable/enable/delete/activate
   within the plan), triaging AI-scored lead mentions (approve/reject, relevance reasoning), and email
   alert settings.
-last-updated: 2026-11-08
+last-updated: 2026-11-16
 allowed-tools: Bash(./scripts/redreplier.js:*)
 ---
 
@@ -72,7 +72,7 @@ Get your API key at: https://redreplier.com/api-tokens
 
 1. **Websites** — you register the websites/products you want to track. The description is the context for AI relevance scoring: without one, a site's new mentions get no `relevanceScore`, so draft it with `websites:analyze` and set it.
 2. **Keywords** — each website has keywords. Keywords have a lifecycle: `PENDING` (proposed, not yet paid for, matches nothing) → `ACTIVE` (live, monitored) → `DISABLED` (stopped, frees its slot, keeps its mentions). `SUSPENDED` means the grader rejected the keyword as too noisy — edit it to fix. Edits are unlimited.
-3. **Billing** — keyword capacity is tied to the plan. Adding keywords (and listing websites) auto-activates as many as fit for free; the rest stay `PENDING` until the plan is upgraded in the RedReplier app. Nothing here ever charges. The preview commands show what that upgrade would cost.
+3. **Billing**: keyword capacity is tied to the plan. Adding keywords activates as many as fit for free; the rest stay `PENDING` until a slot frees up (disabling or deleting a keyword, or deleting a website, promotes them into it), `keywords:activate` runs, or the plan is upgraded in the RedReplier app. Listing websites only reads. Nothing here ever charges. The preview commands show what that upgrade would cost.
 4. **Mentions** — matched posts and comments across Reddit, Hacker News, X, Bluesky, and Facebook, each AI-scored 0-100 for relevance, with a reason, tags, and a drafted reply on demand. You triage them: `APPROVED` (real lead) / `REJECTED` (noise) / `NEW` (inbox). Triage is reversible.
 5. **Alerts** — optional email digests on a cadence (15 / 30 / 60 / 120 / 180 / 240 / 720 / 1440 minutes), clamped up to what the plan allows.
 
@@ -82,10 +82,10 @@ Get your API key at: https://redreplier.com/api-tokens
 |---------|-------------|
 | `./scripts/redreplier.js setup --key <key>` | Configure API key |
 | `./scripts/redreplier.js workspaces` | List the workspaces this key can act in. An API key reaches only its own workspace |
-| `./scripts/redreplier.js websites` | List monitored websites with keyword IDs and statuses. Run first. Also promotes PENDING keywords that fit the plan for free |
+| `./scripts/redreplier.js websites` | List monitored websites with keyword IDs, statuses and each site's `ignoredKeywords`. Run first. Read-only |
 | `./scripts/redreplier.js websites:get --id <id>` | Get one website with its keywords; use it to re-check statuses after a keyword change |
 | `./scripts/redreplier.js websites:create --url <url> [--name ..] [--keywords a,b] [--description .. \| --no-analyze]` | Add a website. Without `--description` the URL is scraped to write one (one AI generation); if the response shows `description: null`, run `websites:analyze` and `websites:update`. `--no-analyze` sends `description: ""`, which skips the scrape and the AI generation and leaves the site without a description. Initial keywords land as PENDING; duplicate domains are rejected |
-| `./scripts/redreplier.js websites:update --id <id> [--name ..] [--description .. \| --clear-description]` | Update name and/or description; omitted fields are kept. `--clear-description` (or `--description ""`) removes the description, which stops new mentions being scored. The description is the scoring context |
+| `./scripts/redreplier.js websites:update --id <id> [--name ..] [--description .. \| --clear-description] [--ignore "phrase" ... \| --clear-ignore]` | Update name, description and/or ignore list; omitted fields are kept. `--clear-description` (or `--description ""`) removes the description, which stops new mentions being scored. The description is the scoring context. `--ignore` is repeatable, one word or phrase per flag (up to 100, 255 characters each), and replaces the whole ignore list: mentions whose title or text contains one, ignoring case, leave every mention list and count, and new matches are hidden as they arrive. Read the current `ignoredKeywords` with `websites:get` and pass every entry to keep. `--clear-ignore` empties the list and brings hidden mentions back; confirm with the user before removing entries |
 | `./scripts/redreplier.js websites:delete --id <id>` | Stop monitoring a website (soft delete, no restore command; re-creating the URL revives it). Confirm with the user first |
 | `./scripts/redreplier.js websites:analyze --url <url>` | Scrape a URL and AI-generate a description without creating anything (uses one AI generation) |
 | `./scripts/redreplier.js keywords:add --website <id> --keywords a,b` | Add keywords (unlimited). Those that fit the plan go ACTIVE for free; the rest stay PENDING until the plan is upgraded in the app. Returns the whole website |
@@ -126,17 +126,17 @@ Every endpoint also accepts an optional `X-Workspace-Id` header. An API key belo
 GET    /api/v1/websites                       # list (with keywords)
 GET    /api/v1/websites/{id}                   # get one
 POST   /api/v1/websites                        # { url, name?, keywords?, description? }; description "" skips the analysis
-PATCH  /api/v1/websites/{id}                   # { name?, description? }; description "" clears it
+PATCH  /api/v1/websites/{id}                   # { name?, description?, ignoredKeywords? }; description "" clears it
 DELETE /api/v1/websites/{id}                   # soft delete
 POST   /api/v1/websites/analyze-description    # { url } -> { description }
 ```
 
-Keywords created with a website start `PENDING`. `description` is the scoring context; without it new mentions get no `relevanceScore`, so generate one with `analyze-description` and pass it (or set it later with `PATCH`). Omitting `description` on `POST` scrapes the URL and spends one AI generation; `description: ""` skips that and creates the site without one. `PATCH` keeps omitted fields. `DELETE` is a soft delete that re-creating the URL revives.
+Keywords created with a website start `PENDING` until `activate-pending`, a later keyword add, or a freed slot promotes them. `description` is the scoring context; without it new mentions get no `relevanceScore`, so generate one with `analyze-description` and pass it (or set it later with `PATCH`). Omitting `description` on `POST` scrapes the URL and spends one AI generation; `description: ""` skips that and creates the site without one. `PATCH` keeps omitted fields. `ignoredKeywords` (string array, at most 100 entries of up to 255 characters) replaces the whole ignore list: a mention whose title or text contains one leaves every mention list and count, and new ones are hidden as they arrive. Matching ignores case, blanks and duplicates are dropped, `[]` clears the list, and removing a word brings its mentions back. Every website response returns `ignoredKeywords`, lowercased. `DELETE` is a soft delete that re-creating the URL revives.
 
 ### Keywords
 
 ```
-POST   /api/v1/websites/{id}/keywords          # { keywords: string[] }  (auto-activates within plan; returns the website)
+POST   /api/v1/websites/{id}/keywords          # { keywords: string[] }  (those that fit the plan go ACTIVE, the rest PENDING; returns the website)
 PATCH  /api/v1/keywords/{id}                    # { value }              (re-graded; unlimited; keeps its slot)
 POST   /api/v1/keywords/{id}/disable            # -> DISABLED (frees the slot, keeps mentions)
 POST   /api/v1/keywords/{id}/enable             # -> ACTIVE, or PENDING when the plan is full (never charges)
@@ -160,7 +160,7 @@ POST  /api/v1/mentions/{id}/explain             # lazily generates + returns rel
 
 Defaults: REJECTED mentions are excluded (unless `statuses` names them) and mentions below the website's minimum score (30 by default) are hidden unless `includeLowRelevance=true`; `scoreBuckets` does not lift that cutoff, and neither does `minScore` (0-100), which only narrows the rows further and leaves out unscored mentions. `sort` is `RELEVANCE` (default) or `RECENT`. `limit` 1-500 (default 50). Relevance buckets: `VERY_LOW` (<10), `LOW` (10-29), `MEDIUM` (30-49), `HIGH` (50-74), `VERY_HIGH` (75+). Sources: `REDDIT_POST`, `REDDIT_COMMENT`, `TWITTER` (X), `BLUESKY`, `HACKERNEWS`, `FACEBOOK`, `FACEBOOK_GROUP`. `from`/`to` filter on ingestion time (`ingestedAt`), not publish time.
 
-List returns `{ mentions: [...], total, limit, offset }`. Each mention: `id`, `websiteId`, `source`, `keyword`, `title`, `contentText`, `url`, `author`, `subreddit`, `status`, `relevanceScore`, `relevanceReason`, `aiReplySuggestion`, `tags`, `publishedAt`, `ingestedAt`, `reviewedAt`. `explain` fills in `relevanceReason`, `tags`, and `aiReplySuggestion` on first call and needs the website to have a description; it returns `null` for an unknown ID. `subreddit` holds the subreddit for Reddit sources and the group id for `FACEBOOK_GROUP`; it is null for the other sources.
+List returns `{ mentions: [...], total, limit, offset }`. Each mention: `id`, `websiteId`, `source`, `keyword`, `title`, `contentText`, `url`, `author`, `subreddit`, `status`, `relevanceScore`, `relevanceReason`, `aiReplySuggestion`, `tags`, `publishedAt`, `ingestedAt`, `reviewedAt`. `explain` fills in `relevanceReason`, `tags`, and `aiReplySuggestion` on first call and needs the website to have a description; an unknown ID answers 404. `subreddit` holds the subreddit for Reddit sources and the group id for `FACEBOOK_GROUP`; it is null for the other sources.
 
 ### Alert Settings
 
@@ -213,7 +213,8 @@ RedReplier has a native MCP server at `https://mcp.redreplier.com/mcp`. OAuth-ca
 ## Tips
 
 - Always run `websites` first to get website IDs and keyword IDs.
-- New keywords land as `PENDING`; the ones that fit the plan auto-activate. Check statuses after adding with `websites:get`.
+- New keywords that fit the plan go `ACTIVE` at once; only the rest land as `PENDING`. Check statuses after adding with `websites:get`.
+- To hide noise such as job posts, add words to a site's ignore list with `websites:update --ignore` instead of rejecting each mention by hand.
 - A website whose description is `null` gets unscored mentions. `websites:create` scrapes one when `--description` is omitted; if it comes back `null`, run `websites:analyze` and pass the text to `websites:update`.
 - Default mention lists hide low-relevance noise — pass `--include-low` only when you specifically want everything.
 - Use `--sort RECENT` for "what's new", `--sort RELEVANCE` (default) for "best leads first".

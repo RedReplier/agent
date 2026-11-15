@@ -1,7 +1,7 @@
 {
   "identifier": "redreplier-agent",
   "name": "RedReplier",
-  "version": "1.5.0",
+  "version": "1.6.0",
   "description": "Find leads in public conversations on Reddit, Hacker News, X, Bluesky and Facebook. RedReplier watches your keywords, scores every mention 0 to 100 for relevance, and lets the agent triage mentions, explain scores, draft replies and manage alerts. Sign in with OAuth or an API key.",
   "author": "RedReplier",
   "authorUrl": "https://redreplier.com",
@@ -828,7 +828,7 @@
     {
       "name": "explain_mention",
       "title": "Explain Mention Score",
-      "description": "Get the AI relevance reasoning (relevanceReason), tags, and a drafted reply (aiReplySuggestion) for one mention, generating whatever is missing on first call and storing it, so later calls are instant reads. The website must have a description; without one the mention comes back unchanged. Use it when a score looks wrong or before update_mention_status on a borderline lead, not across every row of list_mentions, since generation is slow. Returns the full mention object, or null (not a 404) when the ID is unknown to this account.",
+      "description": "Get the AI relevance reasoning (relevanceReason), tags, and a drafted reply (aiReplySuggestion) for one mention, generating whatever is missing on first call and storing it, so later calls are instant reads. The website must have a description; without one the mention comes back unchanged. Use it when a score looks wrong or before update_mention_status on a borderline lead, not across every row of list_mentions, since generation is slow. Returns the full mention object. Returns 404 when the ID does not exist or belongs to another account.",
       "inputSchema": {
         "type": "object",
         "properties": {
@@ -850,7 +850,7 @@
         "type": "object",
         "properties": {
           "result": {
-            "description": "The full mention with relevanceReason, tags, and aiReplySuggestion filled in; null when the mention is not found."
+            "description": "The full mention with relevanceReason, tags, and aiReplySuggestion filled in."
           }
         },
         "additionalProperties": false

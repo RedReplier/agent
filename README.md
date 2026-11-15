@@ -232,7 +232,7 @@ Or copy `skills/redreplier/` into your project's skills folder. Cursor can also 
 
 ### What the agent can do
 
-- Add, update, analyze and remove monitored websites
+- Add, update, analyze and remove monitored websites, and set the words whose mentions each site hides
 - Add, reword, disable, enable and delete keywords. Keywords that fit the plan go active, the rest wait as pending
 - List and count AI-scored mentions, filtered by relevance, minimum score, keyword, source or date
 - Approve or reject mentions, or send them back to the inbox

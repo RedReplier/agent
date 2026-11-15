@@ -128,6 +128,20 @@ function stringArg(parsed, key) {
   return value;
 }
 
+function repeatedArg(args, key) {
+  const values = [];
+  for (let i = 0; i < args.length; i++) {
+    if (args[i] !== `--${key}`) continue;
+    const next = args[i + 1];
+    if (next === undefined || next.startsWith("--") || next.trim() === "") {
+      fail(`--${key} needs a word or phrase`);
+    }
+    values.push(next.trim());
+    i++;
+  }
+  return values;
+}
+
 function appendCsv(params, key, value) {
   if (!value) return;
   String(value)
@@ -198,7 +212,7 @@ const COMMANDS = {
     const parsed = parseArgs(args);
     if (!parsed.id) {
       error(
-        'Usage: ./scripts/redreplier.js websites:update --id <website_id> [--name "..."] [--description "..." | --clear-description]',
+        'Usage: ./scripts/redreplier.js websites:update --id <website_id> [--name "..."] [--description "..." | --clear-description] [--ignore "phrase" ... | --clear-ignore]',
       );
       process.exit(1);
     }
@@ -208,8 +222,19 @@ const COMMANDS = {
     if (name) body.name = name;
     if (parsed["clear-description"]) body.description = "";
     else if (description !== undefined) body.description = description;
+    const ignore = repeatedArg(args, "ignore");
+    if (parsed["clear-ignore"] && ignore.length > 0) {
+      fail("Pass --ignore or --clear-ignore, not both");
+    }
+    if (parsed["clear-ignore"]) body.ignoredKeywords = [];
+    else if (ignore.length > 0) {
+      if (ignore.length > 100) fail("--ignore takes at most 100 words or phrases");
+      const tooLong = ignore.find((value) => value.length > 255);
+      if (tooLong) fail(`--ignore "${tooLong}" is longer than 255 characters`);
+      body.ignoredKeywords = ignore;
+    }
     if (Object.keys(body).length === 0) {
-      fail("Nothing to update. Pass --name, --description, or --clear-description");
+      fail("Nothing to update. Pass --name, --description, --clear-description, --ignore or --clear-ignore");
     }
     output(await request("PATCH", `/api/v1/websites/${parsed.id}`, body));
   },

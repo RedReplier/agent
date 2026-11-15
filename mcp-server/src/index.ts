@@ -891,14 +891,12 @@ function createMcpServer(apiClient?: RestClient): McpServer {
     {
       title: 'Explain Mention and Draft Reply',
       description:
-        'Get the AI relevance reasoning (relevanceReason), tags, and a drafted reply (aiReplySuggestion) for one mention, generating whatever is missing on first call and storing it, so later calls are instant reads. The website must have a description; without one the mention comes back unchanged. Use it when a score looks wrong or before update_mention_status on a borderline lead, not across every row of list_mentions, since generation is slow. Returns the full mention object, or null (not a 404) when the ID is unknown to this account.',
+        'Get the AI relevance reasoning (relevanceReason), tags, and a drafted reply (aiReplySuggestion) for one mention, generating whatever is missing on first call and storing it, so later calls are instant reads. The website must have a description; without one the mention comes back unchanged. Use it when a score looks wrong or before update_mention_status on a borderline lead, not across every row of list_mentions, since generation is slow. Returns the full mention object. Returns 404 when the ID does not exist or belongs to another account.',
       inputSchema: {
         mentionId: z.string().uuid().describe('Mention to explain, by its id from list_mentions'),
       },
       outputSchema: resultSchema(
-        mentionOutput
-          .nullable()
-          .describe('The mention with relevanceReason, tags and aiReplySuggestion filled in; null when the mention is not found'),
+        mentionOutput.describe('The mention with relevanceReason, tags and aiReplySuggestion filled in'),
       ),
       annotations: {
         readOnlyHint: false,
