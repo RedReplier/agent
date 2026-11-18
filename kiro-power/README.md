@@ -12,6 +12,11 @@ The first tool call opens a browser to sign in with your RedReplier account. The
 
 You need a RedReplier account: [redreplier.com](https://redreplier.com).
 
+## Privacy and support
+
+- Privacy policy: [redreplier.com/privacy](https://redreplier.com/privacy)
+- Support: [contact@redreplier.com](mailto:contact@redreplier.com)
+
 ## What is in this folder
 
 | Path | What it is |

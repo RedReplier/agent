@@ -5,6 +5,7 @@
   "description": "Monitor Reddit, Hacker News, X, Bluesky and Facebook for keyword mentions of your product, triage AI-scored leads and manage alerts from your AI agent.",
   "author": {
     "name": "RedReplier",
+    "email": "contact@redreplier.com",
     "url": "https://redreplier.com"
   },
   "homepage": "https://redreplier.com/features/agents",
