@@ -1,0 +1,33 @@
+README.md
+  s_b9fc587de00f9c::t_c66431fbb7fe84 24
+kiro-power/LICENSE
+  s_b9fc587de00f9c::t_0b300b65f080b9 1-21
+kiro-power/README.md
+  s_b9fc587de00f9c::t_e36133f2931188 1-21
+kiro-power/mcp.json
+  s_b9fc587de00f9c::t_9f0479bf72b902 1-9
+kiro-power/plugin.json
+  s_b9fc587de00f9c::t_d9021bba661cd9 1-23
+kiro-power/skills/redreplier/SKILL.md
+  s_b9fc587de00f9c::t_7c117d0ea9eb97 1-206
+kiro-power/skills/redreplier/references/keywords.md
+  s_b9fc587de00f9c::t_62226e14c7976a 1-35
+kiro-power/skills/redreplier/references/replies.md
+  s_b9fc587de00f9c::t_be36e8a3006cdb 1-38
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c3cc4b922c9bb6505c2d432b7f5cd53d28c25d53",
+  "prompts": {},
+  "sessions": {
+    "s_b9fc587de00f9c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "55cd77a6-6412-4381-89e0-a1f8d89ed092",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Taras Shynkarenko <taras.shinkarenko@gmail.com>"
+    }
+  }
+}
