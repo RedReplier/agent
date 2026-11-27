@@ -12,7 +12,7 @@ Any other MCP client needs only the URL, `https://mcp.redreplier.com/mcp`. The f
 
 ## What this repo is
 
-This repo holds every RedReplier agent integration except the Claude Code and Hermes Agent plugin:
+This repo holds every RedReplier agent integration except the Claude Code plugin and the Hermes Agent plugin:
 
 | Path | What it is |
 | --- | --- |
@@ -23,14 +23,14 @@ This repo holds every RedReplier agent integration except the Claude Code and He
 | `lhm.plugin.json` | The LobeHub marketplace listing for the hosted MCP server. |
 | [`kiro-power/`](./kiro-power) | The Kiro power. It connects to the hosted MCP server and signs in with OAuth. |
 
-The Claude Code and Hermes Agent plugin lives in [RedReplier/claude-plugin](https://github.com/RedReplier/claude-plugin). It signs in with OAuth and never asks for an API key, which the Claude plugin directory and the Hermes catalog both require, so it ships its own MCP-only skill instead of the script skill here.
+The Claude Code plugin lives in [RedReplier/claude-plugin](https://github.com/RedReplier/claude-plugin) and the Hermes Agent plugin in [RedReplier/hermes-plugin](https://github.com/RedReplier/hermes-plugin). Both sign in with OAuth and never ask for an API key, which the Claude plugin directory and the Hermes catalog both require, so each ships its own MCP-only skill instead of the script skill here.
 
 ## Pick your install
 
 | You use | Install | Sign-in |
 | --- | --- | --- |
 | Claude Code | `/plugin install redreplier --marketplace RedReplier/claude-plugin` | OAuth |
-| Hermes Agent | `hermes plugins install redreplier` | OAuth |
+| Hermes Agent | `hermes plugins install redreplier`, from [RedReplier/hermes-plugin](https://github.com/RedReplier/hermes-plugin) | OAuth |
 | Gemini CLI | `gemini extensions install https://github.com/RedReplier/agent` | OAuth |
 | Claude Desktop, Cursor, ChatGPT or any MCP client | Add `https://mcp.redreplier.com/mcp` as a remote server | OAuth, or an API key header |
 | Cursor, Codex, Windsurf, Claude Code or any agent with skills | `npx skills add RedReplier/agent` | API key |
@@ -132,6 +132,16 @@ gemini extensions install https://github.com/RedReplier/agent
 ```bash
 hermes plugins install redreplier
 hermes plugins enable redreplier
+```
+
+The plugin lives in [RedReplier/hermes-plugin](https://github.com/RedReplier/hermes-plugin). On a machine without a browser, skip the plugin and add the server to `~/.hermes/config.yaml` with an API key, then put `REDREPLIER_API_KEY=...` in `~/.hermes/.env`:
+
+```yaml
+mcp_servers:
+  redreplier:
+    url: "https://mcp.redreplier.com/mcp"
+    headers:
+      Authorization: "Bearer ${REDREPLIER_API_KEY}"
 ```
 
 ### Headless agents and clients without OAuth
@@ -286,15 +296,16 @@ No. Keywords that fit the plan go active, the rest wait as pending until you upg
 **Which sources does it watch?**
 Reddit, Hacker News, X (Twitter), Bluesky and Facebook.
 
-**What's the difference between this repo and RedReplier/claude-plugin?**
-The plugin is the Claude Code and Hermes package: OAuth only, with a skill that drives these MCP tools. This repo has the server's source, the API-key skill for `npx skills add` and the Gemini extension.
+**What's the difference between this repo and RedReplier/claude-plugin or RedReplier/hermes-plugin?**
+Those are the Claude Code and Hermes Agent plugins: OAuth only, each with a skill that drives these MCP tools. This repo has the server's source, the API-key skill for `npx skills add` and the Gemini extension.
 
 ## Links
 
 - [RedReplier](https://redreplier.com)
 - [AI agents](https://redreplier.com/features/agents)
 - [API tokens](https://redreplier.com/api-tokens)
-- [Claude Code and Hermes plugin](https://github.com/RedReplier/claude-plugin)
+- [Claude Code plugin](https://github.com/RedReplier/claude-plugin)
+- [Hermes Agent plugin](https://github.com/RedReplier/hermes-plugin)
 - Privacy policy: [redreplier.com/privacy](https://redreplier.com/privacy)
 
 ## License
